@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enc-Chat</title>
+    <link rel="icon" href="{{ url_for('static', path='/assets/logo.png') }}" type="image/png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&display=swap"
+        rel="stylesheet">
+</head>
+
+<body style="font-family: 'Roboto', sans-serif; font-weight: 300;">
+    <div class="flex min-h-screen items-center justify-center bg-black text-xs">
+        <div class="w-full max-w-sm">
+            <div class="flex items-center justify-center">
+                <img style="height: 20vh;" src="{{ url_for('static', path='/assets/logo_name_black.png') }}" alt="Enc-Chat Logo." loading='lazy' />
+            </div>
+
+            <div class="rounded-lg bg-gray-800 px-8 py-5 shadow-lg">
+                <h2 id="form_instruction" class="text-2nd mb-6 text-gray-100 text-xl text-bold">Login to your account.
+                </h2>
+                <form id="auth_form" method="post">
+                    <div id="email" class="mb-4">
+                        <label for="email" class="block text-gray-400">Email</label>
+                        <input type="email" name="email_id" required
+                            class="w-full rounded border border-gray-600 bg-gray-700 p-2 text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    </div>
+                    <div id="user_id" class="mb-4 hidden">
+                        <label for="user_id" class="block text-gray-400">User ID</label>
+                        <input id="user_id_input" type="text" name="user_id"
+                            class="w-full rounded border border-gray-600 bg-gray-700 p-2 text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    </div>
+                    <div id="first_name" class="mb-4 hidden">
+                        <label for="first_name" class="block text-gray-400">First Name</label>
+                        <input id="first_name_input" type="text" name="first_name"
+                            class="w-full rounded border border-gray-600 bg-gray-700 p-2 text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    </div>
+                    <div id="last_name" class="mb-4 hidden">
+                        <label for="last_name" class="block text-gray-400">Last Name</label>
+                        <input id="last_name_input" type="text" name="last_name"
+                            class="w-full rounded border border-gray-600 bg-gray-700 p-2 text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    </div>
+                    <div id="password" class="mb-4">
+                        <label for="password" class="block text-gray-400">Password</label>
+                        <input pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$" type="password"
+                            name="password" required
+                            class="w-full rounded border border-gray-600 bg-gray-700 p-2 text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    </div>
+                    <div id="confirm_password" class="mb-4 hidden">
+                        <label for="confirm_password" class="block text-gray-400">Confirm Password</label>
+                        <input id="confirm_password_input" pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$"
+                            type="password" name="confirm_password"
+                            title="Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character, and must be at least 8 characters long."
+                            class="w-full rounded border border-gray-600 bg-gray-700 p-2 text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    </div>
+                    <div id="terms_conditions" class="mb-4 hidden">
+                        <label class="inline-flex items-center">
+                            <input id="terms_conditions_input" type="checkbox" />
+                            <span class="ml-2 text-white">I accept the <a href="/TnC" target="_blank"
+                                    class="underline">Terms and Conditions</a></span>
+                        </label>
+                    </div>
+                    <div>
+                        <p id="error_message" class="text-center text-red-500 mb-4 hidden"></p>
+                        <button id="submit_btn"
+                            class="w-full rounded bg-blue-600 p-2 text-gray-100 transition hover:bg-blue-700">Login</button>
+                    </div>
+                </form>
+                <div class="flex justify-end items-center mt-3 text-white">
+                    <p id="form_switch_text">Don't have an account? </p>
+                    <button id="form_switch" class="underline ml-2 text-white">Sign Up</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-sha256/0.11.0/sha256.min.js"></script>
+    <script src="{{ url_for('static', path='/js/auth.js') }}"></script>
+</body>
+
+</html>
