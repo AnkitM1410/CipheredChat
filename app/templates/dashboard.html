@@ -5,13 +5,72 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Encrypted-Chat</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="{{ url_for('static', path='/js/tailwindcss.js') }}"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <style>
+        /* From Uiverse.io by satyamchaudharydev */ 
+        .loader {
+        width: 48px;
+        height: 48px;
+        border: 5px solid #111827;
+        border-bottom-color: orange;
+        border-radius: 50%;
+        display: inline-block;
+        box-sizing: border-box;
+        animation: rotation 1s linear infinite;
+        }
+
+        @keyframes rotation {
+        0% {
+            transform: rotate(0deg);
+        }
+        100% {
+            transform: rotate(360deg);
+        }
+        } 
+
+        ::-webkit-scrollbar {
+            width: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #202124;
+            border-radius: 5px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #525355;
+            border-radius: 5px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        .dots {
+        background-color: #313131;
+        background-image: radial-gradient(rgba(255, 255, 255, 0.171) 1px, transparent 0);
+        background-size: 30px 30px;
+        background-position: -5px -5px
+        }
+
+
+        @font-face {
+            font-family: 'OpenDyslexic';
+            src: url("{{ url_for('static', path='/assets/DyslexicFont/OpenDyslexic-Regular.otf') }}") format('opentype');
+            font-style: normal;
+            font-weight: lighter;
+        }
+
+        body {
+            font-family:  sans-serif;
+        }
+    </style>
 </head>
 
-<body class="flex h-screen bg-gray-950 p-2">
+<body class="dots flex h-screen bg-black p-2">
         <div class="w-1/5 h-full ">
-            <div class="w-full h-[90%] bg-indigo-950 rounded-t-lg p-2">
+            <div class="w-full h-[92.5%] bg-black border-2 border-gray-900 rounded-t-lg p-2">
                 <!-- Name of the Project -->
                 <p class="text-lg max-h-8 flex justify-center text-white items-center">< <i class="fa-solid fa-message text-white  text-base"></i> > Enc-Chat</p>
                 <div class="flex mt-2 mb-4 border-white border-2 rounded-full items-center">
@@ -20,47 +79,52 @@
                 </div>
                 
 
-                <div id="chat_channels" class="max-h-[85%] overflow-x-auto scrollbar-thin">
-
+                <div id="chat_channels" class="h-[85%] overflow-x-auto scrollbar-thin">
+                    <div id="chat_channel_loader" class="flex justify-center items-center h-full w-full">
+                        <span class="loader"></span>
+                    </div>
                 </div>
             </div>
-            <div class="w-full h-[10%] bg-gray-900 rounded-b-lg flex">
+            <div class="w-full h-[7.5%] bg-gray-900 rounded-b-lg flex ">
                 
+                <div id="ws-status" class="m-4 h-2 w-2 rounded-full bg-red-600"></div>
+
             </div>
         </div>
 
-        <div id="chat" class="w-4/5 max-h-full ml-3" chat_id="" send_to="">
-            <div id="chat_box" class="w-full p-3 h-[90%] bg-gray-800 rounded-t-lg overflow-auto flex flex-col">
+        <div id="right-panel" class="w-4/5 max-h-full ml-3">
+            <div id="chat" class="hidden h-[100%] " chat_id="" send_to="">
+                <div id="chat_user" class="p-2 w-full h-[7.5%] bg-black border-2 border-gray-900 rounded-t-lg flex items-center">
+                    <img id="chat_user_pp" loading="lazy" src="https://picsum.photos/100" alt="profile_picture" class="rounded-lg h-10 w-10">
+                    <h2 id="chat_user_id" class="px-2 text-lg text-white"></h2>
 
-
-                <!-- <div class="text-white">
-                    <div class="">
-                        <div class="w-fit max-w-[70%] px-4 py-2 rounded-3xl bg-opacity-40 bg-gray-700">
-                            <p>hoo how are you was thing k  ccccccccccccd in we shoulf mmett.</p>
-                        </div>
-                    </div>
-                    <p class="text-xs  px-4 py-2">10 mins</p>
                 </div>
 
-                <div class="text-white">
-                    <div class="flex justify-end">
-                        <div class="w-fit max-w-[70%] px-4 py-2 rounded-3xl bg-opacity-40 bg-gray-700">
-                            <p>hoo how are you was thing k  ccccccccccccccccccccccccccccccccccccccc ccccccccccccc cccccccage ddddddddd in we shoulf mmett.</p>
-                        </div>
-                    </div>
-                    <p class="text-xs text-right pr-4 pt-2">10 mins</p>
-                </div> -->
+                <div id="chat_box" class="w-full p-3 h-[85%] bg-black border-x-2 border-gray-900 overflow-auto flex flex-col">
+                </div>
 
-               
+
+                <div id="chat_form_disable" class="w-full min-h-[7.5%] bg-black border-2 border-gray-900 rounded-b-lg flex  justify-center items-center">
+                    <p  class="text-red-600 pl-10">WebSocket disconnected, Reconnecting...</p>
+                </div>
                 
+
+                <form id="chat_form" class="hidden w-full max-h-[7.5%] min-h-[7.5%] bg-black border-2 border-gray-900 rounded-b-lg flex-grow-0 flex-shrink overflow-auto px-4 items-center ">
+                    <input id="message_input" type="text" class="bg-transparent text-white w-11/12  focus:outline-none focus:ring-0 placeholder-opacity-30" placeholder="Type your message."     >
+                    <button id="message_btn" type="submit" class="ml-3 hidden"><i class="fa-solid fa-circle-arrow-right text-2xl text-green-700"></i></button>
+                </form>
+
+                
+
+            </div> 
+
+            <div id="support" class="h-full w-full flex items-center justify-center">
+                <h3 id="idel-text" class="text-white">Open Chat</h3> <br>
+                <span id="loader" class="hidden loader"></span>
             </div>
-            <form onsubmit="sendMessage(event)"  class="w-full min-h-[10%] bg-gray-900 rounded-b-lg flex flex-grow-0 flex-shrink overflow-auto p-4 items-center ">
-                <input id="message_input" type="text" class="bg-transparent text-white w-11/12 border-b-2 border-white focus:outline-none focus:ring-0">
-                <button type="submit" ><i class=" text-xl text-green-700 fa-regular fa-circle-up"></i></button>
-            </form>
-        </div> 
-    
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js" integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+        </div>
+     
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
     <script src="{{ url_for('static', path='/js/chat.js') }}"></script>
 
 </body>

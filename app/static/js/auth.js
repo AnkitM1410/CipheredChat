@@ -6,6 +6,30 @@ $(document).ready(function() {
         $('#error_message').text(msg)
     }
 
+    $("#user_id_input").on("input", function () { 
+        var user_id = $(this).val();
+        if(user_id.length > 0){
+            user_id = user_id.toLowerCase()
+            $(this).val(user_id)
+            $.ajax({
+                type: "GET",
+                url: window.location.origin + "/authentication/user_id_available/"+user_id,
+                success: function (response) {
+                    if(response){
+                        // $("#user_id_input").removeClass("focus:ring-blue-500").removeClass("focus:ring-red-500").addClass("focus:ring-green-500")
+                        $("#user_id_input").removeClass("bg-gray-700").removeClass("bg-red-700").addClass("bg-green-700")
+                    }else{
+                        $("#user_id_input").removeClass("bg-gray-700").removeClass("bg-green-700").addClass("bg-red-700")
+
+                    }
+                },
+                error: function (response) {  }
+            })
+        }else{
+            $("#user_id_input").removeClass("bg-green-600").removeClass("bg-red-600").addClass("bg-gray-600")
+
+        }
+     })
 
     $('#auth_form').on('submit', function (e) {
         e.preventDefault();

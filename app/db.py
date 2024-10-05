@@ -114,22 +114,33 @@ def available_chat_channels(user_id: str):
 
     return False, None
 
-# Messages Management.
+def user_in_channel(user_id: str, chat_id: str):
+    response = CHAT_.select('user1','user2').eq('chat_id', chat_id).execute()
+    channel = response.data
+    if channel:
+        print(channel[0])
+        if channel[0]['user1']==user_id or channel[0]['user2']==user_id:
+            return True
+        
+    return False
 
+# Messages Management.
 def fetch_messages(chat_id: str, after: str = None):
-    query = MESSAGES_.select('message_id', 'message', 'sent_at').eq('chat_id', chat_id)
+    query = MESSAGES_.select('message_id', 'message', 'send_at', 'send_by', 'chat_id').eq('chat_id', chat_id).order("send_at")
     if after:
-        query = query.gt('sent_at', after)
+        query = query.gt('send_at', after)
     
     messages = query.execute()
     return messages.data
 
-async def save_message(chat_id: str, message_id: str, message: str):
+async def save_message(chat_id: str, message_id: str, message: str, send_by: str, send_at:str):
     data, count = MESSAGES_.insert(
         {   
             "chat_id": chat_id,
             "message_id": message_id,
             "message": message,
+            "send_by": send_by,
+            'send_at': send_at
         }
     ).execute()
 
@@ -140,4 +151,4 @@ async def save_message(chat_id: str, message_id: str, message: str):
 
 
 if __name__ == "__main__":
-    print(fetch_messages(chat_id='abc', after="2003-09-18T15:30:29"))
+    print(user_in_channel(chat_id='abc', user_id="ankit3"))

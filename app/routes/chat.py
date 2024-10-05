@@ -3,7 +3,7 @@ from fastapi.responses import RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from utility import jwt_decode, generate_message_id
-from db import save_message, available_chat_channels
+from db import save_message, available_chat_channels, fetch_messages, user_in_channel
 
 router = APIRouter()
 connected_users = {}
@@ -52,7 +52,6 @@ async def open_chats(request: Request, response: Response):
             return JSONResponse(content={"status": status, "open_chat_list": open_chat_list})
     return JSONResponse(content={"status": False, "msg": "Invalid Cookie"})
 
-
 @router.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     auth_token = websocket.cookies.get("auth_token", None)
@@ -83,7 +82,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 if data['func']=='new_msg':
                     message_id = generate_message_id()
                     payload = {'type': 'msg','message': data['message'], 'message_id': message_id, 'chat_id': data['chat_id']}
-                    await save_message(chat_id=data['chat_id'], message_id=message_id, message=data['message'])
+                    await save_message(chat_id=data['chat_id'], message_id=message_id, message=data['message'], send_by=user_id, send_at=data['send_at'])
                     await WS_.send_message_to(payload=payload, send_to=data['send_to'])
                 elif data['func']=='new_chat':
                     pass
@@ -91,9 +90,24 @@ async def websocket_endpoint(websocket: WebSocket):
                 payload = {'type': 'error', 'msg': 'Invalid func request.'}
                 await WS_.send_message_to(payload=payload, send_to=user_id)
                     
-    except WebSocketDisconnect:
+    except WebSocketDisconnect:     
         WS_.disconnect(user_id)
     finally:
         # Ensure disconnection happens even if an unexpected error occurs
         WS_.disconnect(user_id)
+
+@router.get("/get_chat/{chat_id}")
+async def get_chat(request: Request, response: Response, chat_id):
+    auth_token = request.cookies.get("auth_token")
+    if auth_token:
+        auth_status, auth_json = jwt_decode(jwt_token=auth_token)
+        if auth_status:
+            if user_in_channel(user_id=auth_json['user_id'], chat_id=chat_id):
+                chats = fetch_messages(chat_id=chat_id)
+                print(chats)
+                return JSONResponse(content={"status": True, "chats": chats})
+            else:
+                return JSONResponse(content={"status": False, "msg": "Invalid Chat_id or Not a member of the Chat."})
+    return JSONResponse(content={"status": False, "msg": "Invalid Cookie"})
+
 
