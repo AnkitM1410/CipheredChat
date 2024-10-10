@@ -1,6 +1,6 @@
 from supabase import create_client, Client
 from config import SUPABASE_URL, SUPABASE_KEY
-from utility import sha256, generate_verification_id, one_day_form_now, is_valid_verification_id
+from utility import sha256, generate_verification_id, one_day_form_now, is_valid_verification_id, generate_chat_id
 from model import Signup
 from functools import lru_cache
 from datetime import datetime
@@ -26,6 +26,13 @@ def is_user_id_available(user_id: str):
 
 def user_exists(email_id: str):
     return True if USERS_.select('email_id').eq('email_id', email_id).execute().data else False
+
+def user_info(email_id: str = '', user_id: str = ''):
+    if email_id:
+        return USERS_.select('email_id', 'user_id').eq('email_id', email_id).execute().data
+    if user_id:
+        return USERS_.select('email_id', 'user_id').eq('user_id', user_id).execute().data
+    return False
 
 def user_exists_in_verification(email_id: str):
     return True if VERIFICATION_.select('email_id').eq('email_id', email_id).execute().data else False
@@ -102,27 +109,46 @@ def create_user(user_data):
     
 # Chat channel Mangement.
 def available_chat_channels(user_id: str):
-    chat_channels = CHAT_.select('*').or_(f"user1.eq.{user_id},user2.eq.{user_id}").execute()
+    chat_channels = CHAT_.select('*').or_(f"user_id1.eq.{user_id},user_id2.eq.{user_id}").execute()
     if chat_channels.data:
         payload = []
         for channel in chat_channels.data:
             channel_data = {}
             channel_data['chat_id'] = channel['chat_id']
-            channel_data['send_to'] = channel['user2'] if channel['user1']==user_id else channel['user1']
+            channel_data['send_to'] = channel['user_id2'] if channel['user_id1']==user_id else channel['user_id1']
             payload.append(channel_data)
         return True, payload
 
     return False, None
 
 def user_in_channel(user_id: str, chat_id: str):
-    response = CHAT_.select('user1','user2').eq('chat_id', chat_id).execute()
+    response = CHAT_.select('user_id1','user_id2').eq('chat_id', chat_id).execute()
     channel = response.data
     if channel:
-        print(channel[0])
-        if channel[0]['user1']==user_id or channel[0]['user2']==user_id:
+        if channel[0]['user_id1']==user_id or channel[0]['user_id2']==user_id:
             return True
-        
+
     return False
+
+def create_new_channel(user_id1: str, user_id2: str):
+    """
+    If created succesfully return New chat_id, else None.
+    """
+    new_chat_id = generate_chat_id()
+
+    data, count = CHAT_.insert(
+        {
+            'chat_id': new_chat_id,
+            'user_id1': user_id1,
+            'user_id2': user_id2,
+        }
+    ).execute()
+
+    if data:
+        return new_chat_id
+    else:
+        return None
+
 
 # Messages Management.
 def fetch_messages(chat_id: str, after: str = None):

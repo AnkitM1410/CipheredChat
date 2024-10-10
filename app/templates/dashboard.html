@@ -8,7 +8,6 @@
     <script src="{{ url_for('static', path='/js/tailwindcss.js') }}"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <style>
-        /* From Uiverse.io by satyamchaudharydev */ 
         .loader {
         width: 48px;
         height: 48px;
@@ -53,15 +52,12 @@
         background-size: 30px 30px;
         background-position: -5px -5px
         }
-
-
-        @font-face {
+        /* @font-face {
             font-family: 'OpenDyslexic';
             src: url("{{ url_for('static', path='/assets/DyslexicFont/OpenDyslexic-Regular.otf') }}") format('opentype');
             font-style: normal;
             font-weight: lighter;
-        }
-
+        } */
         body {
             font-family:  sans-serif;
         }
@@ -69,30 +65,53 @@
 </head>
 
 <body class="dots flex h-screen bg-black p-2">
-        <div class="w-1/5 h-full ">
+        <div id="left-panel" class="w-1/5 h-full ">
             <div class="w-full h-[92.5%] bg-black border-2 border-gray-900 rounded-t-lg p-2">
-                <!-- Name of the Project -->
                 <p class="text-lg max-h-8 flex justify-center text-white items-center">< <i class="fa-solid fa-message text-white  text-base"></i> > Enc-Chat</p>
-                <div class="flex mt-2 mb-4 border-white border-2 rounded-full items-center">
-                    <input class="px-4 bg-transparent text-white w-10/12 h-10 rounded-full border-0 focus:outline-none focus:ring-0" placeholder="Someone..." type="text">
-                    <i class="fa-solid fa-magnifying-glass w-2/12 text-white text-2xl"></i>
+                <div class="flex justify-around">
+                    <div id="search" class="flex mt-2 mb-4 w-[85%] border-white border-2 rounded-full items-center">
+                        <input id="search_input" class="px-4 bg-transparent text-white w-10/12 h-10 rounded-full border-0 focus:outline-none focus:ring-0" placeholder="Someone..." type="text">
+                        <button id="search_btn" class="fa-solid fa-magnifying-glass w-2/12 text-white text-2xl"></button>
+                    </div>
+                    <div class="h-10 mt-2">
+                        <button id="new_user_btn" class="text-white text-5xl hover:text-green-500">+</button>
+                    </div>
+                    
                 </div>
                 
 
+                <div class="h-[2px] w-full mt-1 bg-gray-900"></div>
+                
+                
                 <div id="chat_channels" class="h-[85%] overflow-x-auto scrollbar-thin">
-                    <div id="chat_channel_loader" class="flex justify-center items-center h-full w-full">
+                    <div id="chat_channel_loader" class="flex justify-center items-center h-full w-full">   
                         <span class="loader"></span>
                     </div>
+                    <div id="chat_channel_empty" class="text-white justify-center items-center h-full w-full">
+                        No Chats.
+                    </div>
                 </div>
-            </div>
-            <div class="w-full h-[7.5%] bg-gray-900 rounded-b-lg flex ">
-                
-                <div id="ws-status" class="m-4 h-2 w-2 rounded-full bg-red-600"></div>
 
+
+            </div>
+            <div class="w-full h-[7.5%] bg-gray-900 rounded-b-lg flex justify-around">
+                <div id="ws-status" class="m-4 h-2 w-2 rounded-full bg-red-600"></div>
+                <p id="user_id" class="text-gray-600 mt-2"></p>
+                <button id="font_btn" style="font-family:  OpenDyslexic;" type="button" class="text-gray-900 w-24 hover:text-white border border-gray-800 hover:bg-gray-900 rounded-lg text-sm  p-1 m-1 h-8 text-center dark:border-gray-600 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-600 dark:focus:ring-gray-800">OpenDyslexic</button>
             </div>
         </div>
 
         <div id="right-panel" class="w-4/5 max-h-full ml-3">
+            <div id="new_chat" class="hidden h-full w-full  items-center justify-center">
+                <div id="new_chat_form" class="w-80 h-28 bg-black rounded-lg border-2 border-gray-900 flex flex-col items-center">
+                        <input id="new_chat_input" type="text" class="mt-3 mb-2 bg-transparent text-white w-72 h-10 px-3 rounded-lg border-2 border-gray-800 focus:outline-none focus:ring-0" placeholder="User Name">
+                        <button id="new_chat_btn" class="h-10 w-72 rounded-lg bg-gray-400" spellcheck="false" disabled>Add</button>
+                </div>
+                <div id="new_chat_form_disable" class="hidden">
+                    <p  class="text-red-600 pl-10">WebSocket disconnected, Reconnecting...</p>
+                </div>
+            </div>
+
             <div id="chat" class="hidden h-[100%] " chat_id="" send_to="">
                 <div id="chat_user" class="p-2 w-full h-[7.5%] bg-black border-2 border-gray-900 rounded-t-lg flex items-center">
                     <img id="chat_user_pp" loading="lazy" src="https://picsum.photos/100" alt="profile_picture" class="rounded-lg h-10 w-10">

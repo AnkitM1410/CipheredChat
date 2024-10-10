@@ -1,7 +1,7 @@
 #This file just need to exist for the Tailwind Suggestion extenstion to work even if its Empty
 tailwind.config.js
-
-
+.prettierrc
+x.html
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

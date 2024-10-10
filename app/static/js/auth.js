@@ -29,7 +29,7 @@ $(document).ready(function() {
             $("#user_id_input").removeClass("bg-green-600").removeClass("bg-red-600").addClass("bg-gray-600")
 
         }
-     })
+    })
 
     $('#auth_form').on('submit', function (e) {
         e.preventDefault();

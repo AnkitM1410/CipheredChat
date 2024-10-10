@@ -1,8 +1,30 @@
 $(document).ready(function () {
 
     var chat_channel = {};
+    var user_info = {};
     var message_draft = {};
     var chats = {};
+    var OpenDyslexic_available = false
+
+    // Handles Font toggle, only fetches font when asked.
+    $("#font_btn").on("click",function(){
+        if($("#font_btn").text()=="OpenDyslexic"){
+            if(!OpenDyslexic_available){
+                const fontFace = new FontFace('OpenDyslexic', `url(${window.location.origin}/static/assets/DyslexicFont/OpenDyslexic-Regular.otf) format("opentype")`, {style: 'normal', weight: "400"});
+                fontFace.load().then(function(loadedFont) {
+                    document.fonts.add(loadedFont);
+                    OpenDyslexic_available = true;
+                })
+            }
+            document.body.style.fontFamily = "OpenDyslexic"
+            document.body.style.fontSize = "14px"
+            $("#font_btn").text('Normal Font').css("font-family", "sans-serif").css("font-size", "14px");
+        }else{
+            document.body.style.fontFamily = "sans-serif";
+            document.body.style.fontSize = "16px"
+            $("#font_btn").text("OpenDyslexic").css("font-family", "OpenDyslexic").css("font-size", "12px");
+        }
+    })
 
     // Makes draft of messages which are not sent(, even stores after channel is changed.)
     $('#message_input').on("input", function () {
@@ -30,31 +52,74 @@ $(document).ready(function () {
         return div.innerHTML;
     };
 
+    function getCookie(name) {
+        // Create a regular expression to match the cookie name
+        const regex = new RegExp('(?:^|; )' + name + '=([^;]*)');
+        const matches = document.cookie.match(regex);
+        // Return the cookie value or null if not found
+        return matches ? decodeURIComponent(matches[1]) : null;
+    }
+
+    function deleteAllCookies() {
+        const cookies = document.cookie.split(";");
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i];
+            const eqPos = cookie.indexOf("=");
+            const name = eqPos > -1 ? cookie.substr(0, eqPos) : cookie;
+            document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
+        }
+    }
 
     function WSopen(e) {
-        $("#ws-status").removeClass("bg-red-600");
-        $("#ws-status").addClass("bg-green-600");
+        console.log("WebSocket Connected.")
+        // manages Green/Red dot on bottom-left.
+        $("#ws-status").removeClass("bg-red-600").addClass("bg-green-600");
 
+        // opens chat input.
         $("#chat_form_disable").removeClass("flex").addClass("hidden");
         $("#chat_form").removeClass("hidden").addClass("flex");
+
+        // opens add user section
+        $("#new_chat_form").removeClass("hidden").addClass("flex");
+        $("#new_chat_form_disable").hide()
     };
 
     function WSonmessage(e) {
         data = JSON.parse(e.data)
         if (data.type == "msg") {
             add_reveived_message(data.message, data.message_id, data.send_at)
-            chats[data.chat_id].push({ 'chat_id': data.chat_id, 'message_id': data.message_id, 'message': data.message, 'send_at': data.send_at, 'send_to': chat_channel[data.chat_message] })
+            chats[data.chat_id].push({ 'chat_id': data.chat_id, 'message_id': data.message_id, 'message': data.message, 'send_at': data.send_at, 'send_by': data.send_by })
+        } else if (data.type == "new_chat"){
+            chat_channel[data.chat_id] = data.send_to;
+            chats[data.chat_id] = []
+            add_chat_channel(data.chat_id, data.send_to);
+
+            if ($("#new_chat_input").attr('disabled')){
+                $("#new_chat_input").val('').attr('disabled', false);
+                $("#new_chat_btn").text("Add").removeClass("bg-green-700").addClass("bg-gray-700");
+            };
+
+        }else if (data.type == "err") {
+            deleteAllCookies();
+            window.location.href = '/auth';
         } else {
             alert("data.type in not handled ")
         }
     };
 
     function WSclose(e) {
-        $("#ws-status").removeClass("bg-green-600");
-        $("#ws-status").addClass("bg-red-600");
-        console.log("WS Dead");
+        // manages Green/Red dot on bottom-left.
+        $("#ws-status").removeClass("bg-green-600").addClass("bg-red-600");
+        
+        // Blocks chat input.
         $("#chat_form").removeClass("flex").addClass("hidden");
         $("#chat_form_disable").removeClass("hidden").addClass("flex");
+
+        // Blocks add user section.
+        $("#new_chat_form").removeClass("flex").addClass("hidden");
+        $("#new_chat_form_disable").show()
+
+        console.log("WS Dead");
         setTimeout(WSConnect(), 5000);
     };
 
@@ -83,7 +148,7 @@ $(document).ready(function () {
         if (input != '') {
             var current_time = NowFormattedDateTime()
             sendMessage(e, input, current_time);
-            chats[$("#chat").attr('chat_id')].push({ 'chat_id': $("#chat").attr('chat_id'), 'message': input, 'send_at': current_time, 'send_to': $("#chat").attr('send_to') })
+            chats[$("#chat").attr('chat_id')].push({ 'message': input, 'send_at': current_time, 'send_by': user_info['user_id'] })
             $("#message_input").val('');
             $('#chat_box').scrollTop($('#chat_box')[0].scrollHeight);
             $("#message_btn").hide();
@@ -96,7 +161,7 @@ $(document).ready(function () {
         e.preventDefault();
 
         var payload = {
-            'func': 'new_msg',
+            'func': 'msg',
             'message': input,
             'chat_id': $("#chat").attr('chat_id'),
             'send_to': $("#chat").attr('send_to'),
@@ -113,14 +178,14 @@ $(document).ready(function () {
             url: window.location.origin + "/c/openChats",
             dataType: "json",
             success: function (response) {
+                $("#chat_channel_loader").hide()
                 if (response.status) {
-                    $("#chat_channel_loader").hide()
                     response.open_chat_list.forEach(channel => {
                         add_chat_channel(chat_id = channel.chat_id, send_to = channel.send_to)
                         chat_channel[channel.chat_id] = channel.send_to
                     });
                 } else {
-                    alert("Unable to fetch open chats: " + response.msg)
+                    $("#chat_channel_empty").removeClass("hidden").addClass("flex")
                 }
             }
         });
@@ -128,6 +193,8 @@ $(document).ready(function () {
 
     // Adds chat channel to left panel.
     function add_chat_channel(chat_id, send_to) {
+        $("#chat_channel_empty").removeClass("flex").addClass("hidden")
+
         $("#chat_channels").prepend(
             `<div id="${chat_id}" send_to="${send_to}" class="user p-1 my-2 bg-gray-900 rounded-lg text-white  h-min flex items-center">
             <img loading="lazy" src="https://picsum.photos/100" alt="profile_picture" class="rounded-lg h-10 w-10">
@@ -171,7 +238,7 @@ $(document).ready(function () {
         )
     };
 
-    // Calls the server for chats for a chat-channel.
+    // Calls the backend for chats for a chat-channel.
     async function get_chats_by_chat_id(chat_id) {
         try {
             const response = await fetch(window.location.origin + "/c/get_chat/" + chat_id);
@@ -181,7 +248,6 @@ $(document).ready(function () {
             const data = await response.json();
             if (data.status) {
                 chats[chat_id] = data.chats;
-                console.log("Chats fetched:", chats[chat_id]);
             } else {
                 console.log("Unable to fetch chats: " + data.msg);
             }
@@ -190,8 +256,16 @@ $(document).ready(function () {
         }
     };
 
+    function already_connected_user_id(user_id) {
+        return Object.values(chat_channel).some(value =>
+            value.toString().toLowerCase() === user_id.toLowerCase()
+        );
+    }
+
     // Open chat on frontend
     async function open_chat(chat_id) {
+        $("#new_chat").removeClass('flex').addClass('hidden');
+
         if (chat_id != $("#chat").attr('chat_id')) {
             // show loader
             $("#support").show()
@@ -257,12 +331,125 @@ $(document).ready(function () {
 
             $("#support").show();
         };
+
     };
 
-    
+
+    // Handle the search logic in Chat Channel.
+    $("#search_input").on('input', function () {
+        const to_search = $(this).val().trim().toLowerCase();
+        if (to_search != "") {
+            $("#search").removeClass('border-white').addClass('border-orange-500')
+            $('#search_btn').removeClass('fa-magnifying-glass').addClass('fa-x').removeClass("text-white").addClass("text-orange-500")
+        } else {
+            $("#search").removeClass('border-orange-500').addClass('border-white')
+            $('#search_btn').removeClass('fa-x').addClass('fa-magnifying-glass').removeClass("text-orange-500").addClass("text-white")
+        }
+
+        $('#chat_channels').children('div[send_to]').each(function () {
+            if ($(this).attr('send_to').includes(to_search)) {
+                $(this).removeClass("hidden").addClass('flex')
+            } else {
+                $(this).removeClass("flex").addClass('hidden')
+            }
+        });
+    });
+
+    // sets the Chat Channel to default state when clicked on "X".
+    $("#search_btn").on('click', function () {
+        $("#search_input").val("");
+        $('#chat_channels').children('div[send_to]').each(function () {
+            $(this).removeClass("hidden").addClass('flex')
+        });
+
+        $("#search").removeClass('border-orange-500').addClass('border-white')
+        $('#search_btn').removeClass('fa-x').addClass('fa-magnifying-glass').removeClass("text-orange-500").addClass("text-white")
+    })
+
+    $("#new_user_btn").on('click', function () {
+        $("#chat").hide();
+        $("#chat_box").empty();
+        if ($("#chat").attr('chat_id')) {
+            $("#" + $("#chat").attr('chat_id')).removeClass("bg-orange-600").addClass("bg-gray-900");
+            $("#chat").attr('chat_id', '').attr('send_to', '');
+        }
+
+        $("#support").hide();
+        $("#new_chat").removeClass("hidden").addClass('flex');
+        $("#new_chat_input").focus();
+
+    });
+
+
+    // Below 4 function handle all the logic for adding new user in chat.
+    function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+
+    const debouncedCheck = debounce(function (user_id) {
+        if (user_id.length > 0 && user_id != user_info['user_id'] && !already_connected_user_id(user_id)) {
+            $.ajax({
+                type: "GET",
+                url: window.location.origin + "/authentication/user_id_available/" + user_id,
+                success: function (response) {
+                    if (response) {
+                        $("#new_chat_btn").removeClass("bg-gray-700 bg-green-700").addClass("bg-red-700");
+                        $("#new_chat_btn").text("Invalid UserID");
+                        $("#new_chat_btn").attr('disabled', true);
+                    } else {
+                        $("#new_chat_btn").removeClass("bg-gray-700 bg-red-700").addClass("bg-green-700");
+                        $("#new_chat_btn").text("Add");
+                        $("#new_chat_btn").attr('disabled', false);
+                    }
+                },
+                error: function (response) {
+                    // Handle error
+                }
+            });
+        } else {
+            $("#new_chat_btn").removeClass("bg-gray-700 bg-green-700").addClass("bg-red-700");
+            $("#new_chat_btn").text("Invalid UserID");
+            $("#new_chat_btn").attr('disabled', true);
+        }
+    }, 350);
+
+    $("#new_chat_input").on("input", function () {
+        var user_id = $(this).val().toLowerCase();
+        $(this).val(user_id);
+        $("#new_chat_btn").removeClass("bg-red-700 bg-green-700").addClass("bg-gray-700");
+        $("#new_chat_btn").text("Checking...");
+        $("#new_chat_btn").attr('disabled', true);
+
+        debouncedCheck(user_id);
+    });
+
+    $("#new_chat_btn").on('click',function(){
+        if ($("#new_chat_input").val().trim()!=""){
+            $("#new_chat_input").attr('disabled', true);
+            $("#new_chat_btn").attr('disabled', true).text("Adding...");
+
+            var payload = {
+                'func': 'new_chat',
+                'user_id': $("#new_chat_input").val(),
+            };
+            ws.send(JSON.stringify(payload));
+        }
+
+    });
+
+
+    user_info['user_id'] = getCookie('user_id');
+    $("#user_id").text("@"+user_info['user_id']);
 
     list_chats();
     WSConnect();
-
 
 }); 

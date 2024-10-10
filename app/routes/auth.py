@@ -18,10 +18,8 @@ async def login(request: Request, response: Response, login: Login):
         jwt_token = jwt_encode(payload={
             'user_id': user_info['user_id']
             })
-        response.set_cookie(
-            key="auth_token", 
-            value=jwt_token,
-            max_age=60*60*24*7)
+        response.set_cookie(key="auth_token", value=jwt_token, max_age=60*60*24*7)
+        response.set_cookie(key='user_id', value=user_info['user_id'], max_age=60*60*24*7)
         return {'status': True, 'msg': 'Login Succesfull.'}
     else:
         return {'status': False, 'msg': 'Invalid Credentials.'}
@@ -68,10 +66,7 @@ async def verify_and_create_user(requset: Request, responce: Response, verificat
             responce.set_cookie(key="auth_token", value=auth_token)
             return RedirectResponse(url="/c")
     else:
-        return HTMLResponse('''<div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background-color: black; color: white;  margin: 0; padding: 0; box-sizing: border-box;">
-                            <h2>Invalid Link or User Already Created.</h2>
-                            <a href="/auth" style="color: white; margin-top: 10px;">SignUp/Login -></a>
-                            </div>''')
+        return HTMLResponse('''<div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background-color: black; color: white;  margin: 0; padding: 0; box-sizing: border-box;"><h2>Invalid Link or User Already Created.</h2><a href="/auth" style="color: white; margin-top: 10px;">SignUp/Login -></a></div>''')
 
 @router.get("/x")
 async def return_cookie(request: Request, response: Response):

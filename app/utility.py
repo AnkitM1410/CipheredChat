@@ -19,17 +19,30 @@ sha256 = lambda input: hashlib.sha256(input.encode()).hexdigest()
 import jwt
 from config import  JWT_SECRET, JWT_ALGORITHM
 
+def is_jwt(jwt_token):
+    try:
+        # Check if the token has 3 parts separated by '.'
+        if jwt_token.count('.') != 2:
+            return False
+
+        # Decode the JWT token without verifying signature (just to check structure)
+        jwt.decode(jwt_token, options={"verify_signature": False})
+        return True
+    except (jwt.DecodeError, jwt.ExpiredSignatureError, jwt.InvalidTokenError):
+        return False
+    
 # Checks if cookies/auth_token has all the required feilds
 check_auth = lambda auth_token: True if auth_token.get('user_id', None) else False
 
 jwt_encode = lambda payload: jwt.encode(payload=payload, key=JWT_SECRET, algorithm=JWT_ALGORITHM)
 
 def jwt_decode(jwt_token: str):
-    auth_token = jwt.decode(jwt=jwt_token, key=JWT_SECRET, algorithms=JWT_ALGORITHM)
-    if check_auth(auth_token=auth_token):
-        return True, auth_token
-    else:
-        return False, ''
+    if is_jwt(jwt_token):
+        auth_token = jwt.decode(jwt=jwt_token, key=JWT_SECRET, algorithms=JWT_ALGORITHM)
+        if check_auth(auth_token=auth_token):
+            return True, auth_token
+
+    return False, ''
 
 
 
