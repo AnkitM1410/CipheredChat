@@ -2,7 +2,6 @@ from supabase import create_client, Client
 from config import SUPABASE_URL, SUPABASE_KEY
 from utility import sha256, generate_verification_id, one_day_form_now, is_valid_verification_id, generate_chat_id
 from model import Signup
-from functools import lru_cache
 from datetime import datetime
 
 sb: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
