@@ -134,20 +134,22 @@ def create_new_channel(user_id1: str, user_id2: str):
     """
     If created succesfully return New chat_id, else None.
     """
-    new_chat_id = generate_chat_id()
+    data, count = CHAT_.select('chat_id').or_(f"user_id1.eq.{user_id1},user_id1.eq.{user_id2}").or_(f"user_id2.eq.{user_id2},user_id2.eq.{user_id1}").execute()
+    if not data[1]: 
+        new_chat_id = generate_chat_id()
 
-    data, count = CHAT_.insert(
-        {
-            'chat_id': new_chat_id,
-            'user_id1': user_id1,
-            'user_id2': user_id2,
-        }
-    ).execute()
+        data, count = CHAT_.insert(
+            {
+                'chat_id': new_chat_id,
+                'user_id1': user_id1,
+                'user_id2': user_id2,
+            }
+        ).execute()
 
-    if data:
-        return new_chat_id
-    else:
-        return None
+        if data:
+            return new_chat_id
+
+    return None
 
 
 # Messages Management.
@@ -177,4 +179,4 @@ async def save_message(chat_id: str, message_id: str, message: str, send_by: str
 
 
 if __name__ == "__main__":
-    print(user_in_channel(chat_id='abc', user_id="ankit3"))
+    print(create_new_channel(user_id1='ankit2', user_id2='ankit'))

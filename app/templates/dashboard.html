@@ -94,10 +94,22 @@
 
 
             </div>
-            <div class="w-full h-[7.5%] bg-gray-900 rounded-b-lg flex justify-around">
-                <div id="ws-status" class="m-4 h-2 w-2 rounded-full bg-red-600"></div>
-                <p id="user_id" class="text-gray-600 mt-2"></p>
-                <button id="font_btn" style="font-family:  OpenDyslexic;" type="button" class="text-gray-900 w-24 hover:text-white border border-gray-800 hover:bg-gray-900 rounded-lg text-sm  p-1 m-1 h-8 text-center dark:border-gray-600 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-600 dark:focus:ring-gray-800">OpenDyslexic</button>
+            <div class="w-full h-[7.5%] bg-gray-900 rounded-b-lg">
+                <div id="left_panel_tools" class="h-4/5 flex">
+                    <div class="w-1/2 h-full">
+                        <p id="user_id" class="text-gray-600 mt-2"></p>
+                    </div>
+                    <div class="w-1/2 h-full">
+                        <button id="font_btn" style="font-family:  OpenDyslexic;" type="button" class="text-gray-900 w-24 hover:text-white border border-gray-800 hover:bg-gray-900 rounded-lg text-xs  p-1 m-1 h-8 text-center dark:border-gray-600 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-600 dark:focus:ring-gray-800">OpenDyslexic</button>
+                    </div>
+                </div>
+                <div id="websocket_text" class="h-4/5 hidden justify-around items-center">
+                    <p class="text-white text-sm">WebSocket Status</p>
+                </div>
+                <div class="justify-center items-center flex">
+                    <div id="ws-status" class=" h-1 w-[95%] rounded-full bg-red-600"></div>
+                </div>
+                
             </div>
         </div>
 

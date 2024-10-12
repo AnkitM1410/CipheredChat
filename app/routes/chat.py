@@ -107,9 +107,12 @@ async def websocket_endpoint(websocket: WebSocket):
                     await WS_.send_message_to(payload=payload, send_to=data['send_to'])
                 elif data['func']=='new_chat':
                     new_chat_id = create_new_channel(user_id1=user_id, user_id2=data['user_id'])
-                    payload = {"type": 'new_chat', "chat_id": new_chat_id}
-                    await WS_.send_message_to(send_to=user_id, payload=payload | {'send_to': data['user_id']})
-                    await WS_.send_message_to(send_to=data['user_id'], payload=payload | {"send_to": user_id})
+                    if new_chat_id:
+                        payload = {"type": 'new_chat', "chat_id": new_chat_id}
+                        await WS_.send_message_to(send_to=user_id, payload=payload | {'send_to': data['user_id']})
+                        await WS_.send_message_to(send_to=data['user_id'], payload=payload | {"send_to": user_id})
+                    else:
+                        await WS_.send_message_to(send_to=user_id, payload={"type": "err", "msg": "Something went wrong while adding new User."})
             else:
                 payload = {'type': 'err', 'msg': 'Invalid func request.'}
                 await WS_.send_message_to(payload=payload, send_to=user_id)

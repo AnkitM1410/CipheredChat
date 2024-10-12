@@ -6,7 +6,7 @@ $(document).ready(function () {
     var chats = {};
     var OpenDyslexic_available = false
 
-    // Handles Font toggle, only fetches font when asked.
+    // Handles Font toggle, only fetches OpenDyslexic when asked.
     $("#font_btn").on("click",function(){
         if($("#font_btn").text()=="OpenDyslexic"){
             if(!OpenDyslexic_available){
@@ -17,16 +17,16 @@ $(document).ready(function () {
                 })
             }
             document.body.style.fontFamily = "OpenDyslexic"
-            document.body.style.fontSize = "14px"
-            $("#font_btn").text('Normal Font').css("font-family", "sans-serif").css("font-size", "14px");
+            document.body.style.fontSize = "1rem"
+            $("#font_btn").text('Normal Font').css("font-family", "sans-serif");
         }else{
             document.body.style.fontFamily = "sans-serif";
-            document.body.style.fontSize = "16px"
-            $("#font_btn").text("OpenDyslexic").css("font-family", "OpenDyslexic").css("font-size", "12px");
+            // document.body.style.fontSize = "16px"
+            $("#font_btn").text("OpenDyslexic").css("font-family", "OpenDyslexic");
         }
     })
 
-    // Makes draft of messages which are not sent(, even stores after channel is changed.)
+    // Makes draft of messages which are not sent.
     $('#message_input').on("input", function () {
         var draft = $("#message_input").val().trim();
         if (draft != '') {
@@ -34,7 +34,7 @@ $(document).ready(function () {
         }
     })
 
-    // Returns Usable DateTime String.
+    // Returns Useable DateTime String.
     function NowFormattedDateTime() {
         let date = new Date();
         let datePart = date.toISOString().split('T')[0];
@@ -44,6 +44,16 @@ $(document).ready(function () {
         let timezone = millisecondsZ.slice(6);
         return `${datePart} ${time}.${milliseconds}${timezone}`;
     };
+
+    // Homemade lowbudget Tooltip.
+    $("#ws-status").on("mouseover", function(){
+        $("#left_panel_tools").removeClass("flex").addClass("hidden");
+        $("#websocket_text").removeClass("hidden").addClass("flex");
+    })
+    $("#ws-status").on("mouseout", function(){
+        $("#websocket_text").removeClass("flex").addClass("hidden");
+        $("#left_panel_tools").removeClass("hidden").addClass("flex");
+    })
 
     // In case if the message has html code, it makes them non-renderable.
     function HTMLtoTEXT(msg) {
@@ -70,6 +80,8 @@ $(document).ready(function () {
         }
     }
 
+
+    // Websocket Management
     function WSopen(e) {
         console.log("WebSocket Connected.")
         // manages Green/Red dot on bottom-left.
@@ -99,7 +111,14 @@ $(document).ready(function () {
                 $("#new_chat_btn").text("Add").removeClass("bg-green-700").addClass("bg-gray-700");
             };
 
-        }else if (data.type == "err") {
+        } else if(data.type == "err"){
+            if ($("#new_chat_input").attr('disabled')){
+                $("#new_chat_input").val('').attr('disabled', false);
+                $("#new_chat_btn").text("Add").removeClass("bg-green-700").addClass("bg-gray-700");
+            };
+            alert(data.msg);
+
+        } else if (data.type == "kill") {
             deleteAllCookies();
             window.location.href = '/auth';
         } else {
@@ -238,7 +257,7 @@ $(document).ready(function () {
         )
     };
 
-    // Calls the backend for chats for a chat-channel.
+    // Calls the backend for chats for a Channel.
     async function get_chats_by_chat_id(chat_id) {
         try {
             const response = await fetch(window.location.origin + "/c/get_chat/" + chat_id);
@@ -255,12 +274,6 @@ $(document).ready(function () {
             console.error('There was a problem with the fetch operation:', error);
         }
     };
-
-    function already_connected_user_id(user_id) {
-        return Object.values(chat_channel).some(value =>
-            value.toString().toLowerCase() === user_id.toLowerCase()
-        );
-    }
 
     // Open chat on frontend
     async function open_chat(chat_id) {
@@ -381,7 +394,18 @@ $(document).ready(function () {
     });
 
 
+    function already_connected_user_id(user_id) {
+        return Object.values(chat_channel).some(value =>
+            value.toString().toLowerCase() === user_id.toLowerCase()
+        );
+    }
+
     // Below 4 function handle all the logic for adding new user in chat.
+    function already_connected_user_id(user_id) {
+        return Object.values(chat_channel).some(value =>
+            value.toString().toLowerCase() === user_id.toLowerCase()
+        );
+    }
     function debounce(func, wait) {
         let timeout;
         return function executedFunction(...args) {

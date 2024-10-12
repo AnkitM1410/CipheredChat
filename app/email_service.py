@@ -29,9 +29,6 @@ async def send_verification_email(to_addr: str, user_id: str, base_url: str, ver
     return True
 
 
-
-
-
 WELCOME_EMAIL_TEMPLATE = '''
 <h1>Welcome to Encrypted-Chat (even we can't read your message).</h1>
 <h2>Never share your Private Keys with anyone and save it in a Secure place.</h2>
