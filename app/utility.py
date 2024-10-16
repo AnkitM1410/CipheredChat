@@ -54,6 +54,7 @@ generate_uuid = lambda: ''.join(random.choice(uuid_pool) for _ in range(5))
 # Chat and Message ID
 generate_message_id = lambda: ''.join(random.choice(uuid_pool) for _ in range(6))
 generate_chat_id = lambda: ''.join(random.choice(uuid_pool) for _ in range(4))
+generate_session_id = lambda: ''.join(random.choice(uuid_pool) for _ in range(10))
 
 # Generate Verification_id
 import re
@@ -65,16 +66,16 @@ def is_valid_verification_id(verification_id: str):
 
 # Manages Time with time-zone
 from datetime import datetime, timedelta, timezone
-def return_datetime_form_datetime_str(datetime_str):
-    return datetime.strptime(datetime_str, '%Y-%m-%dT%H:%M:%S.%f%z')
+def datetime_form_datetime_str(datetime_str):
+    return datetime.strptime(datetime_str, '%Y-%m-%dT%H:%M:%S%z')
 
 def current_time():
     return datetime.now(timezone.utc)
 
 def one_day_form_now():
     new_datetime = datetime.now(timezone.utc) + timedelta(days=1)
-    return new_datetime.strftime("%Y-%m-%d %H:%M:%S.%f%z")
+    return new_datetime.strftime("%Y-%m-%d %H:%M:%S%z")
 
 def one_month_form_now():
     new_datetime = datetime.now(timezone.utc) + timedelta(weeks=4)
-    return new_datetime.strftime("%Y-%m-%d %H:%M:%S.%f%z")
+    return new_datetime.strftime("%Y-%m-%d %H:%M:%S%z")

@@ -67,7 +67,10 @@
 <body class="dots flex h-screen bg-black p-2">
         <div id="left-panel" class="w-1/5 h-full ">
             <div class="w-full h-[92.5%] bg-black border-2 border-gray-900 rounded-t-lg p-2">
-                <p class="text-lg max-h-8 flex justify-center text-white items-center">< <i class="fa-solid fa-message text-white  text-base"></i> > Enc-Chat</p>
+                <div class="flex justify-center">
+                    <img class="h-10" src="{{ url_for('static', path='/assets/Logo_Name_B.png') }}" alt="">
+                </div>
+                
                 <div class="flex justify-around">
                     <div id="search" class="flex mt-2 mb-4 w-[85%] border-white border-2 rounded-full items-center">
                         <input id="search_input" class="px-4 bg-transparent text-white w-10/12 h-10 rounded-full border-0 focus:outline-none focus:ring-0" placeholder="Someone..." type="text">
@@ -116,8 +119,8 @@
         <div id="right-panel" class="w-4/5 max-h-full ml-3">
             <div id="new_chat" class="hidden h-full w-full  items-center justify-center">
                 <div id="new_chat_form" class="w-80 h-28 bg-black rounded-lg border-2 border-gray-900 flex flex-col items-center">
-                        <input id="new_chat_input" type="text" class="mt-3 mb-2 bg-transparent text-white w-72 h-10 px-3 rounded-lg border-2 border-gray-800 focus:outline-none focus:ring-0" placeholder="User Name">
-                        <button id="new_chat_btn" class="h-10 w-72 rounded-lg bg-gray-400" spellcheck="false" disabled>Add</button>
+                        <input id="new_chat_input" type="text" class="mt-3 mb-2 bg-transparent text-white w-72 h-10 px-3 rounded-lg border-2 border-gray-800 focus:outline-none focus:ring-0" placeholder="User Name" spellcheck="" autocomplete="off">
+                        <button id="new_chat_btn" class="h-10 w-72 rounded-lg bg-gray-400"  disabled>Add</button>
                 </div>
                 <div id="new_chat_form_disable" class="hidden">
                     <p  class="text-red-600 pl-10">WebSocket disconnected, Reconnecting...</p>

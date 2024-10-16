@@ -2,8 +2,8 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Request, Response
 from fastapi.responses import RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from utility import jwt_decode, generate_message_id
-from db import save_message, available_chat_channels, fetch_messages, user_in_channel, create_new_channel
+from utility import jwt_decode, generate_message_id, current_time, datetime_form_datetime_str
+from db import save_message, available_chat_channels, fetch_messages, user_in_channel, create_new_channel, auth_session, chat_channel_available
 
 router = APIRouter()
 connected_users = {}
@@ -15,91 +15,80 @@ class ConnectionManager:
     def __init__(self):
         self.active_connections: dict[str, WebSocket] = {}
 
-    async def connect(self, websocket: WebSocket, user_id: str):
+    async def connect(self, websocket: WebSocket, user_id: str, session_id: str):
         await websocket.accept()
         if user_id not in self.active_connections:
-            self.active_connections[user_id] = websocket
+            self.active_connections[user_id] = {session_id: websocket}
+        self.active_connections[user_id][session_id] = websocket
+        
 
-    def disconnect(self, user_id: str):
+    def disconnect(self, user_id: str, session_id: str):
         if user_id in self.active_connections:
-            del self.active_connections[user_id]
+            if session_id in self.active_connections[user_id]:
+                del self.active_connections[user_id][session_id]
+                print(f"Disconnected {user_id}-{session_id}")
     
     async def send_message_to(self, payload: dict, send_to: str):
         if send_to in self.active_connections:
-            await self.active_connections[send_to].send_json(payload)
+            print(self.active_connections[send_to].keys())
+            for user_sessions in self.active_connections[send_to].values():
+                await user_sessions.send_json(payload)
 
 WS_ = ConnectionManager()
 
 
 @router.get("/")
 async def dashboard(request: Request, response: Response):
-    auth_token = request.cookies.get("auth_token")
-    if auth_token:
-        auth_status, auth_json = jwt_decode(jwt_token=auth_token)
-        if auth_status:
-            return templates.TemplateResponse(request=request, name="dashboard.html")
-    
+    user_id = auth_session(request.cookies.get("session_id", None))
+    if user_id:
+        return templates.TemplateResponse(request=request, name="dashboard.html")
     return RedirectResponse("/auth")
 
 @router.get("/openChats")
 async def open_chats(request: Request, response: Response):
-    auth_token = request.cookies.get("auth_token")
-    if auth_token:
-        auth_status, auth_json = jwt_decode(jwt_token=auth_token)
-        if auth_status:
-            status, open_chat_list = available_chat_channels(user_id=auth_json.get('user_id'))
-            return JSONResponse(content={"status": status, "open_chat_list": open_chat_list})
+    user_id = auth_session(request.cookies.get("session_id", None))
+    if user_id:
+        status, open_chat_list = available_chat_channels(user_id=user_id)
+        return JSONResponse(content={"status": status, "open_chat_list": open_chat_list})
     return JSONResponse(content={"status": False, "msg": "Invalid Cookie"})
 
 @router.get("/get_chat/{chat_id}")
 async def get_chat(request: Request, response: Response, chat_id):
-    auth_token = request.cookies.get("auth_token")
-    if auth_token:
-        auth_status, auth_json = jwt_decode(jwt_token=auth_token)
-        if auth_status:
-            if user_in_channel(user_id=auth_json['user_id'], chat_id=chat_id):
-                chats = fetch_messages(chat_id=chat_id)
-                return JSONResponse(content={"status": True, "chats": chats})
-            else:
-                return JSONResponse(content={"status": False, "msg": "Invalid Chat_id or Not a member of the Chat."})
+    user_id = auth_session(request.cookies.get("session_id", None))
+    if user_id:
+        if user_in_channel(user_id=user_id, chat_id=chat_id):
+            chats = fetch_messages(chat_id=chat_id)
+            return JSONResponse(content={"status": True, "chats": chats})
+        else:
+            return JSONResponse(content={"status": False, "msg": "Invalid Chat_id or Not a member of the Chat."})
     return JSONResponse(content={"status": False, "msg": "Invalid Cookie"})
 
+@router.get('/chat_channel_available/{user_id}')
+async def check_user_id(user_id: str):
+    return chat_channel_available(user_id=user_id.lower())
 
-# Instead of creating a Whole Endpoint, sending User data via Cookies
-# @router.get("/user_info")
-# async def user_info(request: Request, responce: Response):
-#     auth_token = request.cookies.get("auth_token")
-#     if auth_token:
-#         auth_status, auth_json = jwt_decode(jwt_token=auth_token)
-#         if auth_status:
-#             return JSONResponse(content={"status": True, "user_id": auth_json.get('user_id')})
-#     return JSONResponse(content={"status": False, "msg": "Something went worng."})
 
 @router.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
-    auth_token = websocket.cookies.get("auth_token", None)
-    if not auth_token:
-        await websocket.send_text("Authentication failed: No token provided")
+    user_data = auth_session(websocket.cookies.get("session_id", None), metadata=True)
+    if not user_data:
+        await websocket.send_json({'type': 'session_expired'})
         await websocket.close(code=1008)
         return
+    
+    user_id = user_data["user_id"]
+    session_id = user_data["session_id"]
+    expires_at = datetime_form_datetime_str(user_data['expires_at'])
 
-    auth_status, auth_json = jwt_decode(jwt_token=auth_token)
-    if not auth_status:
-        await websocket.send_text(f"Authentication failed: Invalid Auth Token.")
-        await websocket.close(code=1008)
-        return
-
-    user_id = auth_json.get('user_id', None)
-    if not user_id:
-        await websocket.send_text("Authentication failed: No user ID in token")
-        await websocket.close(code=1008)
-        return
-
-    await WS_.connect(websocket, user_id)
+    await WS_.connect(websocket, user_id, session_id)
     try:
         while True:
             data = await websocket.receive_json()
             if data:
+                if current_time()>expires_at:
+                    await WS_.send_message_to(payload= {'type': 'session_expired'}, send_to=user_id)
+                    break
+
                 if data['func']=='msg':
                     message_id = generate_message_id()
                     payload = {'type': 'msg','message': data['message'], 'message_id': message_id, 'chat_id': data['chat_id'], 'send_by': user_id}
@@ -118,7 +107,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 await WS_.send_message_to(payload=payload, send_to=user_id)
                     
     except WebSocketDisconnect:     
-        WS_.disconnect(user_id)
+        WS_.disconnect(user_id=user_id, session_id=session_id)
     finally:
         # Ensure disconnection happens even if an unexpected error occurs
-        WS_.disconnect(user_id)
+        WS_.disconnect(user_id=user_id, session_id=session_id)

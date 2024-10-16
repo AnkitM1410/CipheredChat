@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Request, Response
 from fastapi.responses import RedirectResponse, HTMLResponse
-from db import auth_user, user_exists, user_exists_in_verification, delete_verification_record, create_user, create_verification_record, is_user_id_available, verification_id_exist
+from db import auth_user, user_exists, create_session, user_exists_in_verification, delete_verification_record, create_user, create_verification_record, is_user_id_available, verification_id_exist
 from model import Login, Signup
 from utility import jwt_encode, one_month_form_now, sha256, clean_email
 from email_service import  send_signup_notifiction ,send_verification_email
@@ -15,12 +15,13 @@ async def login(request: Request, response: Response, login: Login):
 
     auth_status, user_info = auth_user(email_id=login.email_id, password=login.password)
     if auth_status:
-        jwt_token = jwt_encode(payload={
-            'user_id': user_info['user_id']
-            })
-        response.set_cookie(key="auth_token", value=jwt_token, max_age=60*60*24*7)
-        response.set_cookie(key='user_id', value=user_info['user_id'], max_age=60*60*24*7)
-        return {'status': True, 'msg': 'Login Succesfull.'}
+        session_id = create_session(user_id=user_info["user_id"])
+        if session_id:
+            response.set_cookie(key="session_id", value=session_id)
+            response.set_cookie(key='user_id', value=user_info["user_id"])
+            return {'status': True, 'msg': 'Login Succesfull.'}
+        else:
+            return {'status': False, 'msg': 'Something went worng. Try after some time.'}
     else:
         return {'status': False, 'msg': 'Invalid Credentials.'}
 
@@ -53,7 +54,7 @@ async def check_user_id(user_id: str):
 
 
 @router.get('/v/{verification_id}')
-async def verify_and_create_user(requset: Request, responce: Response, verification_id):
+async def verify_and_create_user(request: Request, responce: Response, verification_id):
     status, verification_data = verification_id_exist(verification_id=verification_id, return_data=True)
     msg = ""
     print(verification_data)

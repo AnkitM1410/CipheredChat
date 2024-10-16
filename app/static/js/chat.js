@@ -71,12 +71,9 @@ $(document).ready(function () {
     }
 
     function deleteAllCookies() {
-        const cookies = document.cookie.split(";");
-        for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i];
-            const eqPos = cookie.indexOf("=");
-            const name = eqPos > -1 ? cookie.substr(0, eqPos) : cookie;
-            document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
+        var Cookies = document.cookie.split(';');
+        for (var i = 0; i < Cookies.length; i++) {
+        document.cookie = Cookies[i] + "=; expires="+ new Date(0).toUTCString();
         }
     }
 
@@ -111,6 +108,8 @@ $(document).ready(function () {
                 $("#new_chat_btn").text("Add").removeClass("bg-green-700").addClass("bg-gray-700");
             };
 
+            // alert(`${data.send_to} added to your chats.`);
+
         } else if(data.type == "err"){
             if ($("#new_chat_input").attr('disabled')){
                 $("#new_chat_input").val('').attr('disabled', false);
@@ -118,7 +117,8 @@ $(document).ready(function () {
             };
             alert(data.msg);
 
-        } else if (data.type == "kill") {
+        } else if (data.type == "session_expired") {
+            alert("Your Session have expired need to Login Again.")
             deleteAllCookies();
             window.location.href = '/auth';
         } else {
@@ -422,7 +422,7 @@ $(document).ready(function () {
         if (user_id.length > 0 && user_id != user_info['user_id'] && !already_connected_user_id(user_id)) {
             $.ajax({
                 type: "GET",
-                url: window.location.origin + "/authentication/user_id_available/" + user_id,
+                url: window.location.origin + "/c/chat_channel_available/" + user_id,
                 success: function (response) {
                     if (response) {
                         $("#new_chat_btn").removeClass("bg-gray-700 bg-green-700").addClass("bg-red-700");
@@ -443,7 +443,7 @@ $(document).ready(function () {
             $("#new_chat_btn").text("Invalid UserID");
             $("#new_chat_btn").attr('disabled', true);
         }
-    }, 350);
+    }, 450);
 
     $("#new_chat_input").on("input", function () {
         var user_id = $(this).val().toLowerCase();
@@ -468,6 +468,7 @@ $(document).ready(function () {
         }
 
     });
+
 
 
     user_info['user_id'] = getCookie('user_id');

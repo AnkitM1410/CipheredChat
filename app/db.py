@@ -1,6 +1,8 @@
 from supabase import create_client, Client
 from config import SUPABASE_URL, SUPABASE_KEY
-from utility import sha256, generate_verification_id, one_day_form_now, is_valid_verification_id, generate_chat_id
+from utility import sha256, generate_verification_id,\
+      current_time, one_day_form_now, one_month_form_now, is_valid_verification_id, generate_chat_id, generate_session_id\
+      , datetime_form_datetime_str
 from model import Signup
 from datetime import datetime
 
@@ -10,18 +12,62 @@ USERS_ = sb.table('Users') if sb else None
 VERIFICATION_ = sb.table('Verification') if sb else None
 CHAT_ = sb.table('Chats') if sb else None
 MESSAGES_ = sb.table('Messages') if sb else None
+SESSIONS_ = sb.table("Sessions") if sb else None
 
+
+def create_session(user_id: str):
+    new_session_id = generate_session_id()
+    db_responce = SESSIONS_.insert(
+        {
+            "session_id": new_session_id,
+            "user_id": user_id,
+            "expires_at": one_month_form_now()
+        }
+    ).execute()
+
+
+    if db_responce.data:
+        return new_session_id
+    return None
+
+def auth_session(session_id: str, metadata: bool= False):
+    if session_id:
+        db_responce = SESSIONS_.select('*').eq("session_id", session_id).execute()
+
+        if db_responce.data:
+            data = db_responce.data[0]
+            if datetime_form_datetime_str(data['expires_at']) > current_time():
+                if metadata:
+                    return data
+                return data.get('user_id', None)
+            else:
+                delete_session(session_id)
+    return None
+
+def delete_session(session_id: str):
+    try:
+        response = SESSIONS_.delete().eq("session_id", session_id).execute()
+        print(f"Session {session_id} deleted successfully.")
+    except Exception as e:
+        print(f"Error deleting session {session_id}: {str(e)}")
 
 def is_user_id_available(user_id: str): 
     """
     Checks both in USER and VERIFICATION table.
     """
     avaliable_in_users = 0 if USERS_.select('user_id').eq('user_id', user_id).execute().data else 1
-    avaliable_in_verification = 0 if USERS_.select('user_id').eq('user_id', user_id).execute().data else 1
+    avaliable_in_verification = 0 if VERIFICATION_.select('user_id').eq('user_id', user_id).execute().data else 1
 
     if avaliable_in_users and avaliable_in_verification:
         return 1
     return 0
+
+def chat_channel_available(user_id: str): 
+    """
+    Checks only in USER table.
+    """
+    return 0 if USERS_.select('user_id').eq('user_id', user_id).execute().data else 1
+
 
 def user_exists(email_id: str):
     return True if USERS_.select('email_id').eq('email_id', email_id).execute().data else False
@@ -178,4 +224,5 @@ async def save_message(chat_id: str, message_id: str, message: str, send_by: str
 
 
 if __name__ == "__main__":
-    print(create_new_channel(user_id1='ankit2', user_id2='ankit'))
+    print(create_session(user_id='ankit'))
+    # print(auth_session(session_id="VkA1OFxBb6"))

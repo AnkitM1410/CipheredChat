@@ -18,8 +18,10 @@ $(document).ready(function() {
                     if(response){
                         // $("#user_id_input").removeClass("focus:ring-blue-500").removeClass("focus:ring-red-500").addClass("focus:ring-green-500")
                         $("#user_id_input").removeClass("bg-gray-700").removeClass("bg-red-700").addClass("bg-green-700")
+                        $("#submit_btn").attr("disabled", false);
                     }else{
                         $("#user_id_input").removeClass("bg-gray-700").removeClass("bg-green-700").addClass("bg-red-700")
+                        $("#submit_btn").attr("disabled", true);
 
                     }
                 },
@@ -33,6 +35,7 @@ $(document).ready(function() {
 
     $('#auth_form').on('submit', function (e) {
         e.preventDefault();
+        show_error_message("");
 
         var form_submitable = false
         var msg=''

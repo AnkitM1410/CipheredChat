@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from routes import chat, auth
 from email_service import send_email
 from utility import jwt_encode, jwt_decode
-from db import user_exists
+from db import user_exists, auth_session
 
 app = FastAPI(debug=True)
 
@@ -33,23 +33,23 @@ async def home_page(request: Request, response: Response):
     
 @app.get('/auth')
 async def auth(request: Request):
-    auth_token = request.cookies.get('auth_token', None) 
-    if auth_token:
-        auth_status, auth_json = jwt_decode(jwt_token=auth_token)
-        if auth_status:
-                return RedirectResponse('/')
+    user_id = auth_session(request.cookies.get('session_id', None))
+    if user_id:
+        return RedirectResponse('/')
             
     return templates.TemplateResponse(request=request, name="auth.html")
 
 @app.get("/TnC")
-async def TnC(requset: Request):
-    return templates.TemplateResponse(request=requset, name="terms_and_conditions.html")
+async def TnC(request: Request):
+    return templates.TemplateResponse(request=request, name="terms_and_conditions.html")
 
 @app.get("/welcome")
-async def TnC(requset: Request):
-    return templates.TemplateResponse(request=requset, name="welcome.html")
+async def TnC(request: Request):
+    return templates.TemplateResponse(request=request, name="welcome.html")
 
-
+@app.exception_handler(404)
+async def custom_404_handler(request: Request, exc):
+    return templates.TemplateResponse(request=request, name="404.html")
 
 
     
