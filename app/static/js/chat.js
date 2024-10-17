@@ -6,6 +6,16 @@ $(document).ready(function () {
     var chats = {};
     var OpenDyslexic_available = false
 
+    const uuid_pool = '0123456789AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz';
+    const generate_temp_message_id = () => {
+        let uuid = '';
+        for (let i = 0; i < 6; i++) {
+            uuid += uuid_pool.charAt(Math.floor(Math.random() * uuid_pool.length));
+        }
+        return uuid;
+    };
+
+
     // Handles Font toggle, only fetches OpenDyslexic when asked.
     $("#font_btn").on("click",function(){
         if($("#font_btn").text()=="OpenDyslexic"){
@@ -96,8 +106,18 @@ $(document).ready(function () {
     function WSonmessage(e) {
         data = JSON.parse(e.data)
         if (data.type == "msg") {
-            add_reveived_message(data.message, data.message_id, data.send_at)
+            if(data.send_by==user_info["user_id"]){
+                add_sent_message(data.message, data.message_id, data.send_at)
+            }else{
+                add_reveived_message(data.message, data.message_id, data.send_at)
+            }
             chats[data.chat_id].push({ 'chat_id': data.chat_id, 'message_id': data.message_id, 'message': data.message, 'send_at': data.send_at, 'send_by': data.send_by })
+        
+        } else if (data.type == "msg_id") {
+            $(`div[temp_id="${data.temp_message_id}"]`).attr("id", data.message_id).removeAttr("temp_id");
+            $(`div[id="${data.message_id}"] p.text-xs`).text(data.send_at);
+
+        
         } else if (data.type == "new_chat"){
             chat_channel[data.chat_id] = data.send_to;
             chats[data.chat_id] = []
@@ -178,16 +198,17 @@ $(document).ready(function () {
     // Sends message through WS, Adds the sent message to chat box.
     function sendMessage(e, input, current_time) {
         e.preventDefault();
-
+        var temp_message_id = generate_temp_message_id()
         var payload = {
             'func': 'msg',
             'message': input,
             'chat_id': $("#chat").attr('chat_id'),
             'send_to': $("#chat").attr('send_to'),
-            'send_at': current_time
+            'send_at': current_time,
+            'temp_message_id': temp_message_id
         };
         ws.send(JSON.stringify(payload));
-        add_sent_message(message = input, send_at = current_time)
+        add_sending_message(input, temp_message_id)
     };
 
     // Fetches all users chat channels, calls 'add_chat_channel' func to add recipent profile on left panel.
@@ -226,12 +247,27 @@ $(document).ready(function () {
         });
     };
 
-    // !!! Currently dont have message ID !!!
-    function add_sent_message(message, send_at) {
+
+    function add_sending_message(message, temp_message_id) {
         $("#chat_box_empty").hide()
         message = HTMLtoTEXT(message);
         $("#chat_box").append(
-            `<div class="text-white">
+            `<div temp_id="${temp_message_id}" class="text-white">
+                <div class="flex justify-end">
+                    <div class="w-fit max-w-[70%] px-4 py-2 rounded-3xl bg-opacity-40 bg-gray-700">
+                        <p>${message}</p>
+                    </div>
+                </div>
+                <p class="text-xs text-right pr-4 pt-2">Sending...</p>
+            </div>`
+        )
+    };
+
+    function add_sent_message(message, message_id, send_at) {
+        $("#chat_box_empty").hide()
+        message = HTMLtoTEXT(message);
+        $("#chat_box").append(
+            `<div id="${message_id}"  class="text-white">
                 <div class="flex justify-end">
                     <div class="w-fit max-w-[70%] px-4 py-2 rounded-3xl bg-opacity-40 bg-gray-700">
                         <p>${message}</p>
@@ -309,7 +345,7 @@ $(document).ready(function () {
                     if (chat_channel[chat_id] === chat_message.send_by) {
                         add_reveived_message(chat_message.message, chat_message.message_id, chat_message.send_at)
                     } else {
-                        add_sent_message(chat_message.message, chat_message.send_at)
+                        add_sent_message(chat_message.message, chat_message.message_id, chat_message.send_at)
                     }
                 });
 

@@ -20,7 +20,6 @@ class ConnectionManager:
         if user_id not in self.active_connections:
             self.active_connections[user_id] = {session_id: websocket}
         self.active_connections[user_id][session_id] = websocket
-        
 
     def disconnect(self, user_id: str, session_id: str):
         if user_id in self.active_connections:
@@ -28,11 +27,19 @@ class ConnectionManager:
                 del self.active_connections[user_id][session_id]
                 print(f"Disconnected {user_id}-{session_id}")
     
-    async def send_message_to(self, payload: dict, send_to: str):
+    async def send_message_to(self, payload: dict, send_to: str, session_id: str = '', except_session_id: str = ''):
         if send_to in self.active_connections:
             print(self.active_connections[send_to].keys())
-            for user_sessions in self.active_connections[send_to].values():
-                await user_sessions.send_json(payload)
+            if session_id:
+                if session_id in self.active_connections[send_to]:
+                    await self.active_connections[send_to][session_id].send_json(payload)
+            elif except_session_id:
+                for session_id_key in self.active_connections[send_to].keys():
+                    if except_session_id!=session_id_key:
+                        await self.active_connections[send_to][session_id_key].send_json(payload)
+            else:
+                for user_sessions in self.active_connections[send_to].values():
+                    await user_sessions.send_json(payload)
 
 WS_ = ConnectionManager()
 
@@ -90,10 +97,28 @@ async def websocket_endpoint(websocket: WebSocket):
                     break
 
                 if data['func']=='msg':
+                    print(data['temp_message_id'])
                     message_id = generate_message_id()
-                    payload = {'type': 'msg','message': data['message'], 'message_id': message_id, 'chat_id': data['chat_id'], 'send_by': user_id}
+                    payload = {'type': 'msg','message': data['message'], 'message_id': message_id, 'chat_id': data['chat_id'], 'send_by': user_id, 'send_at': data['send_at']}
                     await save_message(chat_id=data['chat_id'], message_id=message_id, message=data['message'], send_by=user_id, send_at=data['send_at'])
+
+                    # Sends message to all the WS of the reciver
                     await WS_.send_message_to(payload=payload, send_to=data['send_to'])
+
+                    # Sends message to all the other session of original-poster, except for the one who sent it
+                    await WS_.send_message_to(payload=payload, send_to=user_id, except_session_id=session_id)
+
+                    # Sends the original session the message_id.
+                    await WS_.send_message_to(
+                        payload={'type': 'msg_id', 
+                                 'temp_message_id': data['temp_message_id'],
+                                 'message_id': message_id, 
+                                 'send_at': data['send_at']},
+                        send_to=user_id,
+                        session_id=session_id
+                    )
+
+
                 elif data['func']=='new_chat':
                     new_chat_id = create_new_channel(user_id1=user_id, user_id2=data['user_id'])
                     if new_chat_id:
