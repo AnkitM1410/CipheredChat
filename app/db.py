@@ -64,9 +64,14 @@ def is_user_id_available(user_id: str):
 
 def chat_channel_available(user_id: str): 
     """
-    Checks only in USER table.
+    Checks only in USER table. If the user e
     """
-    return 0 if USERS_.select('user_id').eq('user_id', user_id).execute().data else 1
+    data = USERS_.select('public_key').eq('user_id', user_id).execute().data
+    print(data, type(data))
+    if data:
+        if data[0]['public_key']:
+            return 1
+    return 0
 
 
 def user_exists(email_id: str):
@@ -196,22 +201,28 @@ def create_new_channel(user_id1: str, user_id2: str):
 
     return None
 
-
 # Messages Management.
-def fetch_messages(chat_id: str, after: str = None):
-    query = MESSAGES_.select('message_id', 'message', 'send_at', 'send_by', 'chat_id').eq('chat_id', chat_id).order("send_at")
+def fetch_messages(chat_id: str, user_id: str, after: str = None):
+    query = MESSAGES_.select('message_id', 'message', 'message_self', 'send_at', 'send_by', 'chat_id').eq('chat_id', chat_id).order("send_at")
     if after:
         query = query.gt('send_at', after)
     
     messages = query.execute()
-    return messages.data
+    messages = messages.data
+    for message in messages:
+        if message['send_by']==user_id:
+            message['message']=message['message_self']
+        del message['message_self']
+        
+    return messages
 
-async def save_message(chat_id: str, message_id: str, message: str, send_by: str, send_at:str):
+async def save_message(chat_id: str, message_id: str, message: str, message_self: str, send_by: str, send_at:str):
     data, count = MESSAGES_.insert(
         {   
             "chat_id": chat_id,
             "message_id": message_id,
             "message": message,
+            "message_self": message_self,
             "send_by": send_by,
             'send_at': send_at
         }
@@ -222,7 +233,16 @@ async def save_message(chat_id: str, message_id: str, message: str, send_by: str
     else:
         return False
 
+# Public Key Management
+def get_public_key(user_id: str):
+    response = USERS_.select("public_key").eq('user_id', user_id).execute()
+    return response.data[0]['public_key'] if response.data else ''
+
+def update_public_key(user_id: str, public_key: str):
+    response = USERS_.update({"public_key": public_key}).eq('user_id', user_id).execute()
+    return True if response.data else False
 
 if __name__ == "__main__":
-    print(create_session(user_id='ankit'))
+    # print(update_public_key(user_id='ankit', public_key='dd'))
     # print(auth_session(session_id="VkA1OFxBb6"))
+    print(get_public_key('ankitm'))

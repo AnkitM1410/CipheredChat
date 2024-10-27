@@ -1,11 +1,16 @@
 $(document).ready(function () {
 
     var chat_channel = {};
+    var chat_pubkey = {};
+    var chat_encoder = {};
+    var user_crypt = new JSEncrypt();
+    var user_encrypter_active = false
+    var user_decrypter_active = false
     var user_info = {};
     var message_draft = {};
     var chats = {};
     var OpenDyslexic_available = false
-
+    
     const uuid_pool = '0123456789AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz';
     const generate_temp_message_id = () => {
         let uuid = '';
@@ -13,6 +18,73 @@ $(document).ready(function () {
             uuid += uuid_pool.charAt(Math.floor(Math.random() * uuid_pool.length));
         }
         return uuid;
+    };
+
+    // Right Panel Management.
+    const showIdel = () => {
+        $("#chat").hide();
+        $("#chat_box").empty();
+        $("#" + $("#chat").attr('chat_id')).removeClass("bg-orange-600").addClass("bg-gray-900");
+        $("#chat").attr('chat_id', '').attr('send_to', '');
+
+        $("#menu").removeClass("flex").addClass("hidden");
+
+        $("#support").show();
+    }
+    const showAddUser = () => {
+        $("#chat").hide();
+        $("#chat_box").empty();
+        if ($("#chat").attr('chat_id')) {
+            $("#" + $("#chat").attr('chat_id')).removeClass("bg-orange-600").addClass("bg-gray-900");
+            $("#chat").attr('chat_id', '').attr('send_to', '');
+        }
+
+        $("#menu").removeClass("flex").addClass("hidden");
+        $("#support").hide();
+
+        $("#new_chat").removeClass("hidden").addClass('flex');
+        $("#new_chat_input").focus();
+    }
+    const showMenu = () => {
+        $("#chat").hide();
+        $("#chat_box").empty();
+
+        if ($("#chat").attr('chat_id')) {
+            $("#" + $("#chat").attr('chat_id')).removeClass("bg-orange-600").addClass("bg-gray-900");
+            $("#chat").attr('chat_id', '').attr('send_to', '');
+        }
+
+
+        $("#new_chat").removeClass("flex").addClass('hidden');
+        $("#support").hide();
+
+        $("#menu").removeClass("hidden").addClass("flex");
+    }
+
+    const user_encrypter = (message) => {
+        if(user_encrypter_active){
+            return user_crypt.encrypt(message);
+        }else{
+            if(localStorage.getItem("public_key")){
+                user_crypt.setPublicKey(localStorage.getItem("public_key"));
+                return user_crypt.encrypt(message);
+            }else{
+                return "Please configure your Public-Private-Keys to see messages."
+            };
+        }
+    }
+
+    const user_decrypter = (encrypted_message) =>{
+        if(user_decrypter_active){
+            return user_crypt.decrypt(encrypted_message);
+        }else{
+            if(localStorage.getItem("private_key")){
+                user_crypt.setPrivateKey(localStorage.getItem("private_key"));
+                return user_crypt.decrypt(encrypted_message);
+            }else{
+                return "Please configure your Public-Private-Keys to see messages."
+            };
+        }
     };
 
 
@@ -107,7 +179,7 @@ $(document).ready(function () {
         data = JSON.parse(e.data)
         if (data.type == "msg") {
             if(data.send_by==user_info["user_id"]){
-                add_sent_message(data.message, data.message_id, data.send_at)
+                add_sent_message("", data.message_self, data.message_id, data.send_at)
             }else{
                 add_reveived_message(data.message, data.message_id, data.send_at)
             }
@@ -163,7 +235,7 @@ $(document).ready(function () {
     };
 
     function WSConnect() {
-        console.log("trying to reconnect WS")
+        console.log("Retrying WS connection.")
         ws = new WebSocket(window.location.origin + "/c/ws");
         ws.onopen = WSopen;
         ws.onmessage = WSonmessage;
@@ -186,8 +258,13 @@ $(document).ready(function () {
         var input = $("#message_input").val().trim();
         if (input != '') {
             var current_time = NowFormattedDateTime()
-            sendMessage(e, input, current_time);
-            chats[$("#chat").attr('chat_id')].push({ 'message': input, 'send_at': current_time, 'send_by': user_info['user_id'] })
+
+            let enc_input = chat_encoder[$("#chat").attr('chat_id')].encrypt(input);
+            let self_enc_input = user_encrypter(input);
+
+            let temp_message_id =  sendMessage(e, input, enc_input, self_enc_input, current_time);
+            add_sending_message(input, temp_message_id);
+            chats[$("#chat").attr('chat_id')].push({ 'message': self_enc_input, 'send_at': current_time, 'send_by': user_info['user_id'] })
             $("#message_input").val('');
             $('#chat_box').scrollTop($('#chat_box')[0].scrollHeight);
             $("#message_btn").hide();
@@ -196,19 +273,21 @@ $(document).ready(function () {
     });
 
     // Sends message through WS, Adds the sent message to chat box.
-    function sendMessage(e, input, current_time) {
+    function sendMessage(e,input, enc_input, self_enc_input, current_time) {
         e.preventDefault();
-        var temp_message_id = generate_temp_message_id()
+        let temp_message_id = generate_temp_message_id()
         var payload = {
             'func': 'msg',
-            'message': input,
+            'message': enc_input,
+            'message_self': self_enc_input,
             'chat_id': $("#chat").attr('chat_id'),
             'send_to': $("#chat").attr('send_to'),
             'send_at': current_time,
             'temp_message_id': temp_message_id
         };
         ws.send(JSON.stringify(payload));
-        add_sending_message(input, temp_message_id)
+        return temp_message_id
+
     };
 
     // Fetches all users chat channels, calls 'add_chat_channel' func to add recipent profile on left panel.
@@ -222,7 +301,7 @@ $(document).ready(function () {
                 if (response.status) {
                     response.open_chat_list.forEach(channel => {
                         add_chat_channel(chat_id = channel.chat_id, send_to = channel.send_to)
-                        chat_channel[channel.chat_id] = channel.send_to
+                        chat_channel[channel.chat_id] = channel.send_to;
                     });
                 } else {
                     $("#chat_channel_empty").removeClass("hidden").addClass("flex")
@@ -252,43 +331,48 @@ $(document).ready(function () {
         $("#chat_box_empty").hide()
         message = HTMLtoTEXT(message);
         $("#chat_box").append(
-            `<div temp_id="${temp_message_id}" class="text-white">
+            `<div temp_id="${temp_message_id}" class="text-white mb-3">
                 <div class="flex justify-end">
-                    <div class="w-fit max-w-[70%] px-4 py-2 rounded-3xl bg-opacity-40 bg-gray-700">
+                    <div class="w-fit max-w-[70%] px-4 py-2 rounded-3xl bg-opacity-40 bg-gray-700 break-words">
                         <p>${message}</p>
                     </div>
                 </div>
-                <p class="text-xs text-right pr-4 pt-2">Sending...</p>
+                <p class="text-xs text-gray-600 text-right pr-4 pt-2">Sending...</p>
             </div>`
         )
     };
 
     function add_sent_message(message, message_id, send_at) {
         $("#chat_box_empty").hide()
+        message = user_decrypter(message);
         message = HTMLtoTEXT(message);
+        
+
         $("#chat_box").append(
-            `<div id="${message_id}"  class="text-white">
+            `<div id="${message_id}"  class="text-white mb-3">
                 <div class="flex justify-end">
-                    <div class="w-fit max-w-[70%] px-4 py-2 rounded-3xl bg-opacity-40 bg-gray-700">
+                    <div class="w-fit max-w-[70%] px-4 py-2 rounded-3xl bg-opacity-40 bg-gray-700 break-words">
                         <p>${message}</p>
                     </div>
                 </div>
-                <p class="text-xs text-right pr-4 pt-2">${send_at}</p>
+                <p class="text-xs text-gray-600 text-right pr-4 pt-2">${send_at}</p>
             </div>`
         )
     };
 
     function add_reveived_message(message, message_id, send_at) {
         $("#chat_box_empty").hide()
+        message = user_decrypter(message);
         message = HTMLtoTEXT(message);
+
         $('#chat_box').append(
-            `<div id="${message_id}" class="text-white">
+            `<div id="${message_id}" class="text-white mb-3">
                 <div class="">
-                    <div class="w-fit max-w-[70%] px-4 py-2 rounded-3xl bg-opacity-40 bg-gray-700">
+                    <div class="w-fit max-w-[70%] px-4 py-2 rounded-3xl bg-opacity-40 bg-gray-700 break-words">
                         <p>${message}</p>
                     </div>
                 </div>
-                <p class="text-xs  px-4 py-2">${send_at}</p>
+                <p class="text-xs text-gray-600 px-4 py-2">${send_at}</p>
             </div>`
         )
     };
@@ -313,7 +397,18 @@ $(document).ready(function () {
 
     // Open chat on frontend
     async function open_chat(chat_id) {
+        if (!chat_pubkey[chat_channel[chat_id]]){
+            response = await fetch(window.location.origin + "/c/public_key/" + chat_channel[chat_id])
+            let public_key = await response.text();
+
+            chat_pubkey[chat_channel[chat_id]] = public_key;
+            const crypt_func = new JSEncrypt();
+            crypt_func.setPublicKey(chat_pubkey[chat_channel[chat_id]])
+            chat_encoder[chat_id] = crypt_func
+        }
+
         $("#new_chat").removeClass('flex').addClass('hidden');
+        $("#menu").removeClass("flex").addClass("hidden");
 
         if (chat_id != $("#chat").attr('chat_id')) {
             // show loader
@@ -373,12 +468,7 @@ $(document).ready(function () {
             $("#idel-text").show();
             $("#loader").hide();
         } else {
-            $("#chat").hide();
-            $("#chat_box").empty();
-            $("#" + $("#chat").attr('chat_id')).removeClass("bg-orange-600").addClass("bg-gray-900");
-            $("#chat").attr('chat_id', '').attr('send_to', '');
-
-            $("#support").show();
+            showIdel();
         };
 
     };
@@ -415,19 +505,7 @@ $(document).ready(function () {
         $('#search_btn').removeClass('fa-x').addClass('fa-magnifying-glass').removeClass("text-orange-500").addClass("text-white")
     })
 
-    $("#new_user_btn").on('click', function () {
-        $("#chat").hide();
-        $("#chat_box").empty();
-        if ($("#chat").attr('chat_id')) {
-            $("#" + $("#chat").attr('chat_id')).removeClass("bg-orange-600").addClass("bg-gray-900");
-            $("#chat").attr('chat_id', '').attr('send_to', '');
-        }
-
-        $("#support").hide();
-        $("#new_chat").removeClass("hidden").addClass('flex');
-        $("#new_chat_input").focus();
-
-    });
+    $("#new_user_btn").on('click', showAddUser);
 
 
     function already_connected_user_id(user_id) {
@@ -461,14 +539,14 @@ $(document).ready(function () {
                 url: window.location.origin + "/c/chat_channel_available/" + user_id,
                 success: function (response) {
                     if (response) {
-                        $("#new_chat_btn").removeClass("bg-gray-700 bg-green-700").addClass("bg-red-700");
-                        $("#new_chat_btn").text("Invalid UserID");
-                        $("#new_chat_btn").attr('disabled', true);
-                    } else {
                         $("#new_chat_btn").removeClass("bg-gray-700 bg-red-700").addClass("bg-green-700");
                         $("#new_chat_btn").text("Add");
                         $("#new_chat_btn").attr('disabled', false);
-                    }
+                    }else {
+                        $("#new_chat_btn").removeClass("bg-gray-700 bg-green-700").addClass("bg-red-700");
+                        $("#new_chat_btn").text("Invalid UserID");
+                        $("#new_chat_btn").attr('disabled', true);
+                    } 
                 },
                 error: function (response) {
                     // Handle error
@@ -505,12 +583,75 @@ $(document).ready(function () {
 
     });
 
+    $("#menu_btn").on("click", showMenu)
+
+
+    function check_key_pair(pubkey, privkey){
+        pubkey = pubkey.trim()
+        privkey = privkey.trim()
+        if (pubkey!="" && privkey!="" && pubkey!=privkey){
+            var temp_crypt = new JSEncrypt();
+            temp_crypt.setPublicKey(pubkey)
+            temp_crypt.setPrivateKey(privkey)
+            
+            try{
+                var enc = temp_crypt.encrypt("dummy-text")
+                var decoded = temp_crypt.decrypt(enc)
+                if(decoded=='dummy-text'){
+                    return true
+                }else{
+                    return false
+                }
+            }catch(err){
+                return false
+            }
+        }else{
+            return false
+        }
+    }
+
+    $("#menu-key-btn").on('click', function(){
+        let pub = $("#menu-pubkey-input").val()
+        let priv = $("#menu-privkey-input").val()
+
+        if(check_key_pair(pub, priv)==true){
+            ws.send(JSON.stringify({"func": "new_public_key", "public_key": pub}));
+            localStorage.setItem("public_key", pub);
+            localStorage.setItem("private_key", priv);
+            alert("Keys Updates Succesfully.")
+        }else{
+            $("#menu-key-msg").text("Invalid Key Pair, Please enter a valid Pub-Priv Key pair.")
+        }
+        $("#menu-pubkey-input").val('')
+        $("#menu-privkey-input").val('')
+        delete temp_crypt
+    });
 
 
     user_info['user_id'] = getCookie('user_id');
     $("#user_id").text("@"+user_info['user_id']);
 
+
+    $(".menu_btn").on("click", function(){
+        $("#menu_keys").removeClass("flex").addClass("hidden");
+        $("#menu_profile").removeClass("flex").addClass("hidden");
+        $("#menu_logout").removeClass("flex").addClass("hidden");
+        $("#menu_public_key").removeClass("flex").addClass("hidden");
+
+        if(this.id.slice(9)=='public_key'){
+            $("#menu_public_key_textarea").val(localStorage.getItem("public_key"))
+        }
+
+        $("#menu_"+this.id.slice(9)).removeClass("hidden").addClass("flex");
+    })
+
+
+    // var user_public_key = fetch(window.location.origin + "/c/public_key/" + user_info["user_id"])
+    // user_public_key = user_public_key.text();
+    // if (user_public_key!=""){
+    //     localStorage.setItem("public_key");
+    // }
+
     list_chats();
     WSConnect();
-
 }); 

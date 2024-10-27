@@ -52,8 +52,8 @@ uuid_pool = '0123456789AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz'
 generate_uuid = lambda: ''.join(random.choice(uuid_pool) for _ in range(5))
 
 # Chat and Message ID
-generate_message_id = lambda: ''.join(random.choice(uuid_pool) for _ in range(6))
-generate_chat_id = lambda: ''.join(random.choice(uuid_pool) for _ in range(4))
+generate_message_id = lambda: ''.join(random.choice(uuid_pool) for _ in range(8))
+generate_chat_id = lambda: ''.join(random.choice(uuid_pool) for _ in range(6))
 generate_session_id = lambda: ''.join(random.choice(uuid_pool) for _ in range(10))
 
 # Generate Verification_id

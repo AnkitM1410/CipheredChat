@@ -1,9 +1,10 @@
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Request, Response
-from fastapi.responses import RedirectResponse, JSONResponse
+from fastapi.responses import RedirectResponse, JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from utility import jwt_decode, generate_message_id, current_time, datetime_form_datetime_str
-from db import save_message, available_chat_channels, fetch_messages, user_in_channel, create_new_channel, auth_session, chat_channel_available
+from db import save_message, available_chat_channels, fetch_messages, user_in_channel, create_new_channel, \
+    auth_session, chat_channel_available, update_public_key, get_public_key
 
 router = APIRouter()
 connected_users = {}
@@ -64,11 +65,20 @@ async def get_chat(request: Request, response: Response, chat_id):
     user_id = auth_session(request.cookies.get("session_id", None))
     if user_id:
         if user_in_channel(user_id=user_id, chat_id=chat_id):
-            chats = fetch_messages(chat_id=chat_id)
+            chats = fetch_messages(chat_id=chat_id, user_id=user_id)
             return JSONResponse(content={"status": True, "chats": chats})
         else:
             return JSONResponse(content={"status": False, "msg": "Invalid Chat_id or Not a member of the Chat."})
     return JSONResponse(content={"status": False, "msg": "Invalid Cookie"})
+
+@router.get('/public_key/{user}')
+async def public_key(request: Request, response: Response, user):
+    user_id = auth_session(request.cookies.get("session_id", None))
+    if user_id:
+        public_key =  get_public_key(user_id=user)
+        if public_key:
+            return PlainTextResponse(public_key)
+    return ""
 
 @router.get('/chat_channel_available/{user_id}')
 async def check_user_id(user_id: str):
@@ -97,16 +107,15 @@ async def websocket_endpoint(websocket: WebSocket):
                     break
 
                 if data['func']=='msg':
-                    print(data['temp_message_id'])
                     message_id = generate_message_id()
-                    payload = {'type': 'msg','message': data['message'], 'message_id': message_id, 'chat_id': data['chat_id'], 'send_by': user_id, 'send_at': data['send_at']}
-                    await save_message(chat_id=data['chat_id'], message_id=message_id, message=data['message'], send_by=user_id, send_at=data['send_at'])
+                    payload = {'type': 'msg', 'message_id': message_id, 'chat_id': data['chat_id'], 'send_by': user_id, 'send_at': data['send_at']}
+                    await save_message(chat_id=data['chat_id'], message_id=message_id, message=data['message'], message_self=data['message_self'], send_by=user_id, send_at=data['send_at'])
 
                     # Sends message to all the WS of the reciver
-                    await WS_.send_message_to(payload=payload, send_to=data['send_to'])
+                    await WS_.send_message_to(payload=payload|{'message': data['message']}, send_to=data['send_to'])
 
                     # Sends message to all the other session of original-poster, except for the one who sent it
-                    await WS_.send_message_to(payload=payload, send_to=user_id, except_session_id=session_id)
+                    await WS_.send_message_to(payload=payload|{'message': data['message_self']}, send_to=user_id, except_session_id=session_id)
 
                     # Sends the original session the message_id.
                     await WS_.send_message_to(
@@ -118,7 +127,6 @@ async def websocket_endpoint(websocket: WebSocket):
                         session_id=session_id
                     )
 
-
                 elif data['func']=='new_chat':
                     new_chat_id = create_new_channel(user_id1=user_id, user_id2=data['user_id'])
                     if new_chat_id:
@@ -127,9 +135,16 @@ async def websocket_endpoint(websocket: WebSocket):
                         await WS_.send_message_to(send_to=data['user_id'], payload=payload | {"send_to": user_id})
                     else:
                         await WS_.send_message_to(send_to=user_id, payload={"type": "err", "msg": "Something went wrong while adding new User."})
+                
+                elif data['func']=='new_public_key':
+                    if not update_public_key(user_id=user_id, public_key=data['public_key']):
+                        payload = {'type': 'err', 'msg': 'Public Key Update Failed.'}
+                        await WS_.send_message_to(payload=payload, send_to=user_id, session_id=session_id)
+                else:
+                    payload = {'type': 'err', 'msg': 'Invalid func request.'}
+                    await WS_.send_message_to(payload=payload, send_to=user_id)
             else:
-                payload = {'type': 'err', 'msg': 'Invalid func request.'}
-                await WS_.send_message_to(payload=payload, send_to=user_id)
+                pass
                     
     except WebSocketDisconnect:     
         WS_.disconnect(user_id=user_id, session_id=session_id)
