@@ -179,7 +179,7 @@ $(document).ready(function () {
         data = JSON.parse(e.data)
         if (data.type == "msg") {
             if(data.send_by==user_info["user_id"]){
-                add_sent_message("", data.message_self, data.message_id, data.send_at)
+                add_sent_message(data.message, data.message_id, data.send_at)
             }else{
                 add_reveived_message(data.message, data.message_id, data.send_at)
             }
@@ -343,8 +343,10 @@ $(document).ready(function () {
     };
 
     function add_sent_message(message, message_id, send_at) {
-        $("#chat_box_empty").hide()
+        $("#chat_box_empty").hide();
+        console.log(message);
         message = user_decrypter(message);
+        console.log(message);
         message = HTMLtoTEXT(message);
         
 

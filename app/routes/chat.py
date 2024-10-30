@@ -85,11 +85,51 @@ async def check_user_id(user_id: str):
     return chat_channel_available(user_id=user_id.lower())
 
 
+
+async def func_msg(data: dict, user_id: str, session_id: str):
+    message_id = generate_message_id()
+    payload = {'type': 'msg', 'message_id': message_id, 'chat_id': data['chat_id'], 'send_by': user_id, 'send_at': data['send_at']}
+    await save_message(chat_id=data['chat_id'], message_id=message_id, message=data['message'], message_self=data['message_self'], send_by=user_id, send_at=data['send_at'])
+
+    # Sends message to all the WS of the reciver
+    await WS_.send_message_to(payload=payload|{'message': data['message']}, send_to=data['send_to'])
+
+    # Sends message to all the other session of original-poster, except for the one who sent it
+    await WS_.send_message_to(payload=payload|{'message': data['message_self']}, send_to=user_id, except_session_id=session_id)
+
+    # Sends the original session the message_id.
+    await WS_.send_message_to(
+        payload={'type': 'msg_id', 
+                    'temp_message_id': data['temp_message_id'],
+                    'message_id': message_id, 
+                    'send_at': data['send_at']},
+        send_to=user_id,
+        session_id=session_id
+    )
+
+async def func_new_chat(data: dict, user_id: str):
+    new_chat_id = create_new_channel(user_id1=user_id, user_id2=data['user_id'])
+    if new_chat_id:
+        payload = {"type": 'new_chat', "chat_id": new_chat_id}
+        await WS_.send_message_to(send_to=user_id, payload=payload | {'send_to': data['user_id']})
+        await WS_.send_message_to(send_to=data['user_id'], payload=payload | {"send_to": user_id})
+    else:
+        await WS_.send_message_to(send_to=user_id, payload={"type": "err", "msg": "Something went wrong while adding new User."})
+
+async def func_new_public_key(data: dict, user_id: str, session_id: str):
+    if not update_public_key(user_id=user_id, public_key=data['public_key']):
+        payload = {'type': 'err', 'msg': 'Public Key Update Failed.'}
+        await WS_.send_message_to(payload=payload, send_to=user_id, session_id=session_id)
+
+
 @router.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     user_data = auth_session(websocket.cookies.get("session_id", None), metadata=True)
     if not user_data:
-        await websocket.send_json({'type': 'session_expired'})
+        try:
+            await websocket.send_json({'type': 'session_expired'})
+        except:
+            pass
         await websocket.close(code=1008)
         return
     
@@ -107,39 +147,11 @@ async def websocket_endpoint(websocket: WebSocket):
                     break
 
                 if data['func']=='msg':
-                    message_id = generate_message_id()
-                    payload = {'type': 'msg', 'message_id': message_id, 'chat_id': data['chat_id'], 'send_by': user_id, 'send_at': data['send_at']}
-                    await save_message(chat_id=data['chat_id'], message_id=message_id, message=data['message'], message_self=data['message_self'], send_by=user_id, send_at=data['send_at'])
-
-                    # Sends message to all the WS of the reciver
-                    await WS_.send_message_to(payload=payload|{'message': data['message']}, send_to=data['send_to'])
-
-                    # Sends message to all the other session of original-poster, except for the one who sent it
-                    await WS_.send_message_to(payload=payload|{'message': data['message_self']}, send_to=user_id, except_session_id=session_id)
-
-                    # Sends the original session the message_id.
-                    await WS_.send_message_to(
-                        payload={'type': 'msg_id', 
-                                 'temp_message_id': data['temp_message_id'],
-                                 'message_id': message_id, 
-                                 'send_at': data['send_at']},
-                        send_to=user_id,
-                        session_id=session_id
-                    )
-
+                    await func_msg(data=data, user_id=user_id, session_id=session_id)
                 elif data['func']=='new_chat':
-                    new_chat_id = create_new_channel(user_id1=user_id, user_id2=data['user_id'])
-                    if new_chat_id:
-                        payload = {"type": 'new_chat', "chat_id": new_chat_id}
-                        await WS_.send_message_to(send_to=user_id, payload=payload | {'send_to': data['user_id']})
-                        await WS_.send_message_to(send_to=data['user_id'], payload=payload | {"send_to": user_id})
-                    else:
-                        await WS_.send_message_to(send_to=user_id, payload={"type": "err", "msg": "Something went wrong while adding new User."})
-                
+                    await func_new_chat(data=data, user_id=user_id)
                 elif data['func']=='new_public_key':
-                    if not update_public_key(user_id=user_id, public_key=data['public_key']):
-                        payload = {'type': 'err', 'msg': 'Public Key Update Failed.'}
-                        await WS_.send_message_to(payload=payload, send_to=user_id, session_id=session_id)
+                    await func_new_public_key(data=data, user_id=user_id, session_id=session_id)
                 else:
                     payload = {'type': 'err', 'msg': 'Invalid func request.'}
                     await WS_.send_message_to(payload=payload, send_to=user_id)
