@@ -11,7 +11,7 @@ from db import user_exists, auth_session
 
 app = FastAPI(debug=True)
 
-app.include_router(chat.router, prefix="/c")
+# app.include_router(chat.router, prefix="/c")
 app.include_router(auth.router, prefix="/authentication")
 
 app.mount("/static", StaticFiles(directory="api/static"), name="static")
