@@ -17,7 +17,7 @@ app.include_router(auth.router, prefix="/authentication")
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 templates = Jinja2Templates(directory="app/templates")
 
-origins = ["http://192.168.29.53:6969, http://127.0.0.1:6969", "https://ciphered-chat.vercel.app"]
+origins = ["http://192.168.29.53:6969, http://127.0.0.1:6969", "vercel.app"]
 
 app.add_middleware(
     CORSMiddleware,
