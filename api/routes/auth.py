@@ -69,6 +69,3 @@ async def verify_and_create_user(request: Request, responce: Response, verificat
     else:
         return HTMLResponse('''<div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background-color: black; color: white;  margin: 0; padding: 0; box-sizing: border-box;"><h2>Invalid Link or User Already Created.</h2><a href="/auth" style="color: white; margin-top: 10px;">SignUp/Login -></a></div>''')
 
-@router.get("/x")
-async def return_cookie(request: Request, response: Response):
-    return request.cookies.get('auth_token')

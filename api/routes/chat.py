@@ -9,8 +9,8 @@ from db import save_message, available_chat_channels, fetch_messages, user_in_ch
 router = APIRouter()
 connected_users = {}
 
-router.mount("/static", StaticFiles(directory="app/static"), name="static")
-templates = Jinja2Templates(directory="app/templates")
+router.mount("/static", StaticFiles(directory="api/static"), name="static")
+templates = Jinja2Templates(directory="api/templates")
 
 class ConnectionManager:
     def __init__(self):
