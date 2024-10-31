@@ -43,9 +43,9 @@ async def auth(request: Request):
 # async def TnC(request: Request):
 #     return templates.TemplateResponse(request=request, name="terms_and_conditions.html")
 
-@app.get("/welcome")
-async def TnC(request: Request):
-    return templates.TemplateResponse(request=request, name="welcome.html")
+# @app.get("/welcome")
+# async def TnC(request: Request):
+#     return templates.TemplateResponse(request=request, name="welcome.html")
 
 @app.exception_handler(404)
 async def custom_404_handler(request: Request, exc):
