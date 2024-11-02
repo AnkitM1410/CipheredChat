@@ -11,11 +11,11 @@ from db import user_exists, auth_session
 
 app = FastAPI(debug=True)
 
-# app.include_router(chat.router, prefix="/c")
+app.include_router(chat.router, prefix="/c")
 app.include_router(auth.router, prefix="/authentication")
 
-app.mount("/static", StaticFiles(directory="api/static"), name="static")
-templates = Jinja2Templates(directory="api/templates")
+app.mount("/static", StaticFiles(directory="static"), name="static")
+templates = Jinja2Templates(directory="templates")
 
 origins = ["http://192.168.29.53:6969, http://127.0.0.1:6969", "vercel.app"]
 
@@ -39,13 +39,13 @@ async def auth(request: Request):
             
     return templates.TemplateResponse(request=request, name="auth.html")
 
-# @app.get("/TnC")
-# async def TnC(request: Request):
-#     return templates.TemplateResponse(request=request, name="terms_and_conditions.html")
+@app.get("/TnC")
+async def TnC(request: Request):
+    return templates.TemplateResponse(request=request, name="terms_and_conditions.html")
 
-# @app.get("/welcome")
-# async def TnC(request: Request):
-#     return templates.TemplateResponse(request=request, name="welcome.html")
+@app.get("/welcome")
+async def TnC(request: Request):
+    return templates.TemplateResponse(request=request, name="welcome.html")
 
 @app.exception_handler(404)
 async def custom_404_handler(request: Request, exc):
