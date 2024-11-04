@@ -18,10 +18,6 @@ This project is a real-time, end-to-end encrypted chat application built with Fa
 
 ## Getting Started
 
-### Prerequisites
-
-- Python 3.8+
-
 ### Installation
 
 1. **Clone the repository**:
