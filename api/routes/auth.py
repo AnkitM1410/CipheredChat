@@ -57,7 +57,7 @@ async def check_user_id(user_id: str):
 async def verify_and_create_user(request: Request, responce: Response, verification_id):
     status, verification_data = verification_id_exist(verification_id=verification_id, return_data=True)
     msg = ""
-    print(verification_data)
+    # print(verification_data)
     if status:
         user_created: bool = create_user(user_data=verification_data)
         verification_record_deleted = delete_verification_record(verification_id=verification_id)

@@ -47,7 +47,7 @@ def auth_session(session_id: str, metadata: bool= False):
 def delete_session(session_id: str):
     try:
         response = SESSIONS_.delete().eq("session_id", session_id).execute()
-        print(f"Session {session_id} deleted successfully.")
+        # print(f"Session {session_id} deleted successfully.")
     except Exception as e:
         print(f"Error deleting session {session_id}: {str(e)}")
 
@@ -67,7 +67,7 @@ def chat_channel_available(user_id: str):
     Checks only in USER table. If the user e
     """
     data = USERS_.select('public_key').eq('user_id', user_id).execute().data
-    print(data, type(data))
+    # print(data, type(data))
     if data:
         if data[0]['public_key']:
             return 1
@@ -245,4 +245,5 @@ def update_public_key(user_id: str, public_key: str):
 if __name__ == "__main__":
     # print(update_public_key(user_id='ankit', public_key='dd'))
     # print(auth_session(session_id="VkA1OFxBb6"))
-    print(get_public_key('ankitm'))
+    # print(get_public_key('ankitm'))
+    pass

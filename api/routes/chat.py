@@ -26,11 +26,11 @@ class ConnectionManager:
         if user_id in self.active_connections:
             if session_id in self.active_connections[user_id]:
                 del self.active_connections[user_id][session_id]
-                print(f"Disconnected {user_id}-{session_id}")
+                # print(f"Disconnected {user_id}-{session_id}")
     
     async def send_message_to(self, payload: dict, send_to: str, session_id: str = '', except_session_id: str = ''):
         if send_to in self.active_connections:
-            print(self.active_connections[send_to].keys())
+            # print(self.active_connections[send_to].keys())
             if session_id:
                 if session_id in self.active_connections[send_to]:
                     await self.active_connections[send_to][session_id].send_json(payload)

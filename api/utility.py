@@ -67,7 +67,7 @@ def is_valid_verification_id(verification_id: str):
 # Manages Time with time-zone
 from datetime import datetime, timedelta, timezone
 def datetime_form_datetime_str(datetime_str):
-    return datetime.strptime(datetime_str, '%Y-%m-%dT%H:%M:%S%z')
+    return datetime.strptime(datetime_str, '%Y-%m-%d %H:%M:%S%z')
 
 def current_time():
     return datetime.now(timezone.utc)
